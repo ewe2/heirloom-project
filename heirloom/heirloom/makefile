@@ -1,4 +1,4 @@
-SHELL = /sbin/sh
+SHELL = /home/ewe2/bin/heirloom-sh
 
 SUBDIRS = build libwchar libcommon libuxre _install \
 	banner basename bc bdiff bfs \

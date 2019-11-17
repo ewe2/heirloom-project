@@ -852,4 +852,3 @@ sh_command2string(register String command, register String destination)
 	}
 }
 
-

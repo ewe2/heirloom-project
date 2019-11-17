@@ -1,0 +1,22 @@
+#
+# Path to the Heirloom Bourne shell. It is used during compilation
+# as well as by the package commands.
+#
+SHELL = /home/ewe2/bin/heirloom-sh
+
+#
+# A BSD-compatible install command.
+#
+INSTALL=/usr/local/ucb/install
+
+#
+# Where the Heirloom Development Tools package has been placed.
+# $(CCSDIR)/bin must also be in the PATH setting when building.
+#
+CCSDIR=/usr/local/ccs
+
+#
+# Prefixes.
+#
+PREFIX=/usr/local
+VAR=/usr/local/var
