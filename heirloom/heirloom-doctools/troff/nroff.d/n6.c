@@ -37,6 +37,10 @@
  */
 
 /*
+ * Changes Copyright (c) 2014 Carsten Kunze <carsten.kunze at arcor.de>
+ */
+
+/*
  * University Copyright- Copyright (c) 1982, 1986, 1988
  * The Regents of the University of California
  * All Rights Reserved
@@ -46,11 +50,13 @@
  * contributors.
  */
 
-#ifdef	EUC
+#include <stdio.h>
+#include <string.h>
+//#ifdef	EUC
 #include <limits.h>
 #include <stdlib.h>
 #include <wchar.h>
-#endif
+//#endif
 #include <ctype.h>
 #include "tdef.h"
 #include "tw.h"
@@ -62,7 +68,7 @@
 */
 
 int	initbdtab[NFONT+1] ={ 0, 0, 0, 3, 3, 0, };
-int	sbold = 0;
+static int	sbold = 0;
 int	initfontlab[NFONT+1] = { 0, 'R', 'I', 'B', PAIR('B','I'), 'S', 0 };
 
 extern	int	nchtab;
@@ -156,9 +162,35 @@ setch(int delim)
 			*s = '\0';
 			if (j != ']')
 				nodelim(']');
-			else if (warn & WARN_CHAR)
-				errprint("missing glyph \\[%s]", temp);
-			return 0;
+			else {
+				size_t l = strlen(temp);
+				if (gemu) {
+					if (l == 5 && *temp == 'u'
+					    && isxdigit((unsigned)temp[1])
+					    && isxdigit((unsigned)temp[2])
+					    && isxdigit((unsigned)temp[3])
+					    && isxdigit((unsigned)temp[4])) {
+						int n;
+						n = strtol(temp + 1, NULL, 16);
+						if (n)
+							return setuc0(n);
+					} else if ((l == 6 || (l == 7
+					    && isdigit((unsigned)temp[6])))
+					    && isdigit((unsigned)temp[5])
+					    && isdigit((unsigned)temp[4])
+					    && !strncmp(temp, "char", 4)) {
+						int i = atoi(temp + 4);
+						if (i <= 255)
+							return i + nchtab +
+							    _SPECCHAR_ST;
+					}
+				}
+				if ((j = findch(temp)) > 0)
+					return j | chbits;
+				else if (warn & WARN_CHAR)
+					errprint("missing glyph \\[%s]", temp);
+				return 0;
+			}
 		}
 	} else {
 		if ((*s++ = getach()) == 0 || (*s++ = getach()) == 0)
@@ -189,7 +221,7 @@ setabs (void)		/* set absolute char from \C'...' */
 }
 
 int
-tr2un(tchar c, int f)
+tr2un(tchar c, int f __unused)
 {
 	int	k;
 
@@ -239,7 +271,9 @@ setps(void)
 	tchar	c;
 	register int i, j, k;
 
+	noschr++;
 	i = cbits(c = getch());
+	if (noschr) noschr--;
 	if (ismot(c) && xflag)
 		return;
 	if (ischar(i) && isdigit(i)) {		/* \sd or \sdd */
@@ -263,7 +297,7 @@ setps(void)
 		} else if (xflag) {	/* \s+[dd], */
 			k = j == '[' ? ']' : j;			/* \s-'dd' */
 			setcbits(c, k);
-			atoi();
+			hatoi();
 			if (nonumb)
 				return;
 			if (!issame(getch(), c))
@@ -286,10 +320,8 @@ setps(void)
 tchar 
 setht (void)		/* set character height from \H'...' */
 {
-	int	n;
-
 	getch();
-	n = inumb(&apts);
+	inumb(&apts);
 	getch();
 	return(0);
 }
@@ -329,10 +361,14 @@ setfont(int a)
 		j = font1;
 		goto s0;
 	}
-	if (i == 'S' || i == '0')
+	if (/* i == 'S' || */ i == '0')
 		return;
-	if ((j = findft(i, 0)) == -1)
+	if ((j = findft(i, 0)) == -1) {
+		if (xflag) {
+			font1 = font;
+		}
 		return;
+	}
 s0:
 	font1 = font;
 	font = j;
@@ -427,14 +463,18 @@ mot(void)
 	tchar	c, delim;
 
 	j = HOR;
+	noschr++;
 	delim = getch(); /*eat delim*/
-	if (n = atoi()) {
+	if (noschr) noschr--;
+	if ((n = hatoi())) {
 		if (vflag)
 			j = VERT;
 		i = makem(quant(n, j));
 	} else
 		i = 0;
+	noschr++;
 	c = getch();
+	if (noschr) noschr--;
 	if (!issame(c, delim))
 		nodelim(delim);
 	vflag = 0;
@@ -546,7 +586,7 @@ bd0:
 bd1:
 	skip(0);
 	noscale++;
-	bdtab[j] = atoi();
+	bdtab[j] = hatoi();
 	noscale = 0;
 }
 
@@ -597,7 +637,7 @@ xlss(void)
 
 	getch();
 	dfact = lss;
-	i = quant(atoi(), VERT);
+	i = quant(hatoi(), VERT);
 	dfact = 1;
 	getch();
 	if (i >= 0)
@@ -613,7 +653,7 @@ setuc0(int n)
 	if (n & ~0177) {
 #ifdef	EUC
 		int	k;
-		k = n + nchtab + _SPECCHAR_ST | chbits;
+		k = (n + nchtab + _SPECCHAR_ST) | chbits;
 		if (k >= NCHARS)
 			morechars(k);
 		return k;
@@ -650,7 +690,7 @@ setanchor(void)
 tchar
 setlink(void)
 {
-	if (linkin = !linkin)
+	if ((linkin = !linkin))
 		discard();
 	return 0;
 }
@@ -658,7 +698,7 @@ setlink(void)
 tchar
 setulink(void)
 {
-	if (linkin = !linkin)
+	if ((linkin = !linkin))
 		discard();
 	return 0;
 }

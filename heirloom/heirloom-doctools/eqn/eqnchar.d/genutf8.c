@@ -14,7 +14,7 @@
 #include <wctype.h>
 #include <stdio.h>
 
-const char *const ctl[] = {
+static const char *const ctl[] = {
 	"nul",
 	"soh",
 	"stx",
@@ -75,7 +75,7 @@ main(void)
 			n = 0;
 		for (i = n; i < 4; i++)
 			putchar(' ');
-		if ((wc+1&017) == 0)
+		if (((wc+1)&017) == 0)
 			putchar('\n');
 	}
 	return 0;

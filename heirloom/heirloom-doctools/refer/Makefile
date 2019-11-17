@@ -1,12 +1,12 @@
 #
 # A BSD-compatible install command.
 #
-INSTALL=/usr/ucb/install
+INSTALL=install
 
 #
 # Packaging prefix.
 #
-PREFIX=/usr
+PREFIX=/usr/local
 
 #
 # Where to place binaries.
@@ -26,7 +26,7 @@ PUBDIR=$(PREFIX)/pub
 #
 # Where to place manual pages.
 #
-MANDIR=$(PREFIX)/share/man/5man
+MANDIR=$(PREFIX)/share/heirloom-doctools/man
 
 #
 # Where to place the troff macro packages.
@@ -68,22 +68,22 @@ EUC=-DEUC
 #
 # Binaries are stripped with this command after installation.
 #
-STRIP=strip -s -R .comment -R .note
+STRIP=strip
 
 #
 # The C compiler.
 #
-CC=cc
+#CC=
 
 #
 # The C++ compiler.
 #
-CCC=c++
+#CXX=
 
 #
 # Compiler flags.
 #
-CFLAGS=-O
+_CFLAGS=$(CFLAGS) $(_CPPFLAGS) $(__CDBG) $(__CLDBG)
 
 #
 # C preprocessor flags.
@@ -91,34 +91,24 @@ CFLAGS=-O
 # Use -D_GNU_SOURCE for Linux with GNU libc.
 # Use -D_INCLUDE__STDC_A1_SOURCE for HP-UX.
 #
-CPPFLAGS=-D_GNU_SOURCE
-
-#
-# Warning flags for the compiler.
-#
-#WARN=
+_CPPFLAGS=$(CPPFLAGS) -D_GNU_SOURCE
 
 #
 # Linker flags.
 #
-LDFLAGS=
+_LDFLAGS=$(LDFLAGS) $(__CLDBG)
 
 #
 # Additional libraries to link with.
 #
-LIBS=
+#LIBS=
 
 #
 # A Bourne-compatible shell.
 #
-SHELL=/home/ewe2/bin/heirloom-sh
-
-#
-# Run ranlib if it is in the current path. This should take care
-# of most situations. On Mac OS X, you need to uncomment "ranlib -c".
-#
-RANLIB=(hash ranlib) >/dev/null 2>&1 || exit 0; ranlib
-#RANLIB=ranlib -c
+SHELL=/bin/sh
+RELEASE = Git snapshot 190405
+#RELEASE = release 160308
 ROBJ = glue1.o refer1.o refer2.o refer4.o refer5.o refer6.o mkey3.o \
 	refer7.o refer8.o hunt2.o hunt3.o deliv2.o hunt5.o hunt6.o \
 	hunt8.o glue3.o hunt7.o hunt9.o glue2.o glue4.o glue5.o refer0.o \
@@ -132,33 +122,36 @@ HOBJ = hunt1.o hunt2.o hunt3.o hunt5.o hunt6.o hunt7.o glue5.o refer3.o \
 	hunt9.o shell.o deliv2.o hunt8.o glue4.o tick.o version.o
 
 
-FLAGS = -DMACDIR='"$(MACDIR)"' -DREFDIR='"$(REFDIR)"' $(EUC)
+FLAGS =	-DMACDIR='"$(MACDIR)"' -DREFDIR='"$(REFDIR)"' $(EUC) $(DEFINES) \
+	-I../include
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(FLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
-all: refer addbib lookbib sortbib roffbib indxbib mkey inv hunt papers/runinv
+all: refer addbib lookbib sortbib roffbib indxbib mkey inv hunt papers/runinv \
+    lookbib.1 refer.1 roffbib.1
+	cd papers && PATH=..:$$PATH sh runinv
 
 refer: $(ROBJ)
-	$(CC) $(LDFLAGS) $(ROBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(ROBJ) $(LIBS) -o $@
 
 addbib: $(AOBJ)
-	$(CC) $(LDFLAGS) $(AOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(AOBJ) $(LIBS) -o $@
 
 lookbib: $(LOBJ)
-	$(CC) $(LDFLAGS) $(LOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(LOBJ) $(LIBS) -o $@
 
 sortbib: $(SOBJ)
-	$(CC) $(LDFLAGS) $(SOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(SOBJ) $(LIBS) -o $@
 
 mkey: $(MOBJ)
-	$(CC) $(LDFLAGS) $(MOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(MOBJ) $(LIBS) -o $@
 
 inv: $(IOBJ)
-	$(CC) $(LDFLAGS) $(IOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(IOBJ) $(LIBS) -o $@
 
 hunt: $(HOBJ)
-	$(CC) $(LDFLAGS) $(HOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(HOBJ) $(LIBS) -o $@
 
 indxbib: indxbib.sh
 	rm -f $@
@@ -190,23 +183,36 @@ install: all
 		$(STRIP) $(ROOT)$(REFDIR)/$$i || exit; \
 	done
 	test -d $(ROOT)$(REFDIR)/papers || mkdir -p $(ROOT)$(REFDIR)/papers
-	$(INSTALL) -c papers/Rbstjissue $(ROOT)$(REFDIR)/papers/Rbstjissue
-	$(INSTALL) -c papers/Rv7man $(ROOT)$(REFDIR)/papers/Rv7man
+	$(INSTALL) -c -m 644 \
+	    papers/Rbstjissue $(ROOT)$(REFDIR)/papers/Rbstjissue
+	$(INSTALL) -c -m 644 papers/Rv7man $(ROOT)$(REFDIR)/papers/Rv7man
 	$(INSTALL) -c papers/runinv $(ROOT)$(REFDIR)/papers/runinv
-	cd $(ROOT)$(REFDIR)/papers && PATH=$(ROOT)$(REFDIR):$$PATH ./runinv
-	for i in addbib.1b lookbib.1b refer.1b roffbib.1b sortbib.1b; \
-	do \
-		$(INSTALL) -c -m 644 $$i $(ROOT)$(MANDIR)/man1b/$$i || exit; \
+	for i in a b c; do \
+		$(INSTALL) -m 644 papers/Ind.i$$i $(ROOT)$(REFDIR)/papers/; \
 	done
-	rm -f $(ROOT)$(MANDIR)/man1b/indxbib.1b
-	ln -s lookbib.1b $(ROOT)$(MANDIR)/man1b/indxbib.1b
+	for i in addbib.1 lookbib.1 refer.1 roffbib.1 sortbib.1; \
+	do \
+		$(INSTALL) -c -m 644 $$i $(ROOT)$(MANDIR)/man1/$$i || exit; \
+	done
+	rm -f $(ROOT)$(MANDIR)/man1/indxbib.1
+	ln -s lookbib.1 $(ROOT)$(MANDIR)/man1/indxbib.1
 
 clean:
 	rm -f $(ROBJ) refer $(AOBJ) addbib $(LOBJ) lookbib \
 		$(SOBJ) sortbib roffbib indxbib $(MOBJ) mkey \
-		$(IOBJ) inv $(HOBJ) hunt papers/runinv core log *~
+		$(IOBJ) inv $(HOBJ) hunt papers/runinv core log *~ \
+		papers/Ind.i? lookbib.1 refer.1 roffbib.1
 
 mrproper: clean
+
+lookbib.1: lookbib.1.in
+	sed 's"/usr/ucblib/reftools/"$(ROOT)$(REFDIR)/"' lookbib.1.in > $@
+
+refer.1: refer.1.in
+	sed 's"/usr/ucblib/reftools/"$(ROOT)$(REFDIR)/"' refer.1.in > $@
+
+roffbib.1: roffbib.1.in
+	sed 's"/usr/ucblib/doctools/tmac/"$(ROOT)$(MACDIR)/"' roffbib.1.in > $@
 
 addbib.o: addbib.c
 deliv2.o: deliv2.c refer..c

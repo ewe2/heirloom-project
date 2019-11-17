@@ -148,26 +148,26 @@ typedef struct {
 
 typedef struct {
 
-	char	*name;			/* font name we're looking for */
-	char	*use;			/* and this is what we should use */
+	const char	*name;			/* font name we're looking for */
+	const char	*use;			/* and this is what we should use */
 
 } Fontmap;
 
-#define	FONTMAP								\
-									\
-	{								\
-	    "G", "H",							\
-	    "LO", "S",							\
-	    "S2", "S",							\
-	    "GI", "HI",							\
-	    "HM", "H",							\
-	    "HK", "H",							\
-	    "HL", "H",							\
-	    "PA", "R",							\
-	    "PI", "I",							\
-	    "PB", "B",							\
-	    "PX", "BI",							\
-	    NULL, NULL,							\
+#define	FONTMAP			\
+				\
+	{			\
+	    { "G" , "H"  },	\
+	    { "LO", "S"  },	\
+	    { "S2", "S"  },	\
+	    { "GI", "HI" },	\
+	    { "HM", "H"  },	\
+	    { "HK", "H"  },	\
+	    { "HL", "H"  },	\
+	    { "PA", "R"  },	\
+	    { "PI", "I"  },	\
+	    { "PB", "B"  },	\
+	    { "PX", "BI" },	\
+	    { NULL, NULL }	\
 	}
 
 /*

@@ -139,9 +139,9 @@
 #include "ext.h"			/* external variable definitions */
 
 
-int	gotdraw = FALSE;		/* TRUE when *drawfile has been added */
-int	gotbaseline = FALSE;		/* TRUE after *baselinefile is added */
-int	inpath = FALSE;			/* TRUE if we're putting pieces together */
+static int	gotdraw = FALSE;		/* TRUE when *drawfile has been added */
+static int	gotbaseline = FALSE;		/* TRUE after *baselinefile is added */
+static int	inpath = FALSE;			/* TRUE if we're putting pieces together */
 
 
 /*
@@ -214,7 +214,7 @@ drawline (
 
 
     if ( dx == 0 && dy == 0 )
-	drawcirc(1);
+	drawcirc(1, 'c');
     else fprintf(tf, "%d %d %d %d Dl\n", hpos + dx, vpos + dy, hpos, vpos);
 
     hgoto(hpos+dx);			/* where troff expects to be */
@@ -230,7 +230,8 @@ drawline (
 
 void
 drawcirc (
-    int d			/* diameter of the circle */
+    int d,			/* diameter of the circle */
+    int c
 )
 
 
@@ -245,7 +246,7 @@ drawcirc (
  *
  */
 
-    drawellip(d, d);
+    drawellip(d, d, c == 'C' ? 'E' : 'e');
 
 }   /* End of drawcirc */
 
@@ -256,7 +257,8 @@ drawcirc (
 void
 drawellip (
     int a,
-    int b			/* axes lengths for the ellipse */
+    int b,			/* axes lengths for the ellipse */
+    int c
 )
 
 
@@ -275,7 +277,7 @@ drawellip (
     if ( a == 0 && b == 0 )
 	return;
 
-    fprintf(tf, "%d %d %d %d De\n", hpos, vpos, a, b);
+    fprintf(tf, "%d %d %d %d D%c\n", hpos, vpos, a, b, c);
 
     hgoto(hpos + a);			/* where troff expects to be */
     vgoto(vpos);
@@ -317,10 +319,9 @@ drawarc (
 
 
     if ( (dx1 != 0 || dy1 != 0) && (dx2 != 0 || dy2 != 0) )
-	if ( c != 'A' )
-	    fprintf(tf, "%d %d %d %d %d %d Da\n", hpos, vpos, dx1, dy1, dx2, dy2);
-	else fprintf(tf, "%d %d %d %d %d %d DA\n", hpos+dx1+dx2, vpos+dy1+dy2,
-						-dx2, -dy2, -dx1, -dy1);
+    {
+        fprintf(tf, "%d %d %d %d %d %d D%c\n", hpos, vpos, dx1, dy1, dx2, dy2, c);
+    }
 
     hgoto(hpos + dx1 + dx2);		/* where troff expects to be */
     vgoto(vpos + dy1 + dy2);
@@ -345,7 +346,7 @@ drawspline(
 
 
     int		x[100], y[100];
-    int		i, N;
+    size_t	i, N;
 
 
 /*

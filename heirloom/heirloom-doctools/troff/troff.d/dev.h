@@ -53,6 +53,8 @@
 #ifndef	TROFF_DEV_H
 #define	TROFF_DEV_H
 
+#include "global.h"
+
 struct dev {
 	unsigned	filesize;	/* number of bytes in file, */
 				/* excluding dev part */

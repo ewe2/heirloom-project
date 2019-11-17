@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "refer..c"
 
 extern char *soutput, *tagout, usedir[];
 union ptr {
@@ -53,7 +54,7 @@ result(unsigned *mptr, int nf, FILE *fc)
 		lp = iflong ? master.b[i] : master.a[i];
 		fseek(fc,lp, SEEK_SET);
 		fgets(res, sizeof res, fc);
-		for(s=res; c = *s; s++)
+		for(s=res; (c = *s); s++)
 			if (c== ';')
 			{
 				*s=0;

@@ -21,14 +21,20 @@
  * Sccsid @(#)funny.c	1.6 (gritter) 10/19/06
  */
 
-# include "e.h"
-# include "e.def"
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
+#include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 funny(int n) {
-	char *f = NULL;
+	const char *f = NULL;
 
-	yyval = oalloc();
+	yyval.token = oalloc();
 	switch(n) {
 	case SUM:
 		f = "\\(*S"; break;
@@ -42,17 +48,17 @@ funny(int n) {
 		error(FATAL, "funny type %d in funny", n);
 	}
 #ifndef NEQN
-	printf(".ds %d \\s%s\\v'.3m'\\s+5%s\\s-5\\v'-.3m'\\s%s\n", yyval, tsize(ps), f, tsize(ps));
-	eht[yyval] = VERT(EM(1.0, ps+5) - EM(0.2, ps));
-	ebase[yyval] = VERT(EM(0.3, ps));
+	printf(".ds %d \\s%s\\v'.3m'\\s+5%s\\s-5\\v'-.3m'\\s%s\n", yyval.token, tsize(ps), f, tsize(ps));
+	eht[yyval.token] = VERT(EM(1.0, ps+5) - EM(0.2, ps));
+	ebase[yyval.token] = VERT(EM(0.3, ps));
 	if(dbg)printf(".\tfunny: S%d <- %s; h=%g b=%g\n", 
-		yyval, f, eht[yyval], ebase[yyval]);
+		yyval.token, f, eht[yyval.token], ebase[yyval.token]);
 #else /* NEQN */
-	printf(".ds %d %s\n", yyval, f);
-	eht[yyval] = VERT(2);
-	ebase[yyval] = 0;
+	printf(".ds %d %s\n", yyval.token, f);
+	eht[yyval.token] = VERT(2);
+	ebase[yyval.token] = 0;
 	if(dbg)printf(".\tfunny: S%d <- %s; h=%d b=%d\n", 
-		yyval, f, eht[yyval], ebase[yyval]);
+		yyval.token, f, eht[yyval.token], ebase[yyval.token]);
 #endif /* NEQN */
-	lfont[yyval] = rfont[yyval] = ROM;
+	lfont[yyval.token] = rfont[yyval.token] = ROM;
 }

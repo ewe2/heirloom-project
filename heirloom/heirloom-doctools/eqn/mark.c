@@ -21,13 +21,20 @@
  * Sccsid @(#)mark.c	1.3 (gritter) 8/12/05
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 #include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 mark(int p1) {
 	markline = 1;
 	printf(".ds %d \\k(97\\*(%d\n", p1, p1);
-	yyval = p1;
+	yyval.token = p1;
 	if(dbg)printf(".\tmark %d\n", p1);
 }
 
@@ -35,8 +42,8 @@ void
 lineup(int p1) {
 	markline = 1;
 	if (p1 == 0) {
-		yyval = oalloc();
-		printf(".ds %d \\h'|\\n(97u'\n", yyval);
+		yyval.token = oalloc();
+		printf(".ds %d \\h'|\\n(97u'\n", yyval.token);
 	}
 	if(dbg)printf(".\tlineup %d\n", p1);
 }

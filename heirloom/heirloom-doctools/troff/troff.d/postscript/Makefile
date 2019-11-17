@@ -1,12 +1,12 @@
 #
 # A BSD-compatible install command.
 #
-INSTALL=/usr/ucb/install
+INSTALL=install
 
 #
 # Packaging prefix.
 #
-PREFIX=/usr
+PREFIX=/usr/local
 
 #
 # Where to place binaries.
@@ -26,7 +26,7 @@ PUBDIR=$(PREFIX)/pub
 #
 # Where to place manual pages.
 #
-MANDIR=$(PREFIX)/share/man/5man
+MANDIR=$(PREFIX)/share/heirloom-doctools/man
 
 #
 # Where to place the troff macro packages.
@@ -68,22 +68,22 @@ EUC=-DEUC
 #
 # Binaries are stripped with this command after installation.
 #
-STRIP=strip -s -R .comment -R .note
+STRIP=strip
 
 #
 # The C compiler.
 #
-CC=cc
+#CC=
 
 #
 # The C++ compiler.
 #
-CCC=c++
+#CXX=
 
 #
 # Compiler flags.
 #
-CFLAGS=-O
+_CFLAGS=$(CFLAGS) $(_CPPFLAGS) $(__CDBG) $(__CLDBG)
 
 #
 # C preprocessor flags.
@@ -91,34 +91,24 @@ CFLAGS=-O
 # Use -D_GNU_SOURCE for Linux with GNU libc.
 # Use -D_INCLUDE__STDC_A1_SOURCE for HP-UX.
 #
-CPPFLAGS=-D_GNU_SOURCE
-
-#
-# Warning flags for the compiler.
-#
-#WARN=
+_CPPFLAGS=$(CPPFLAGS) -D_GNU_SOURCE
 
 #
 # Linker flags.
 #
-LDFLAGS=
+_LDFLAGS=$(LDFLAGS) $(__CLDBG)
 
 #
 # Additional libraries to link with.
 #
-LIBS=
+#LIBS=
 
 #
 # A Bourne-compatible shell.
 #
-SHELL=/home/ewe2/bin/heirloom-sh
-
-#
-# Run ranlib if it is in the current path. This should take care
-# of most situations. On Mac OS X, you need to uncomment "ranlib -c".
-#
-RANLIB=(hash ranlib) >/dev/null 2>&1 || exit 0; ranlib
-#RANLIB=ranlib -c
+SHELL=/bin/sh
+RELEASE = Git snapshot 190405
+#RELEASE = release 160308
 all:
 
 install:

@@ -23,11 +23,7 @@
 #ifdef	EUC
 #include <wchar.h>
 #endif
-
-#if defined (__GLIBC__) && defined (_IO_getc_unlocked)
-#undef	getc
-#define	getc(f)	_IO_getc_unlocked(f)
-#endif
+#include "global.h"
 
 #define boolean int
 #define TRUE 1
@@ -676,8 +672,8 @@ putKcp (
 	}
 
 	if (!nokeyw && !force)
-	    if (  (*start == '#'   ||  isidchr(*start)) 
-	       && (start == Start || !isidchr(start[-1]))
+	    if (  (*start == '#'   ||  isidchr((int)*start)) 
+	       && (start == Start || !isidchr((int)start[-1]))
 	       ) {
 		i = iskw(start);
 		if (i > 0) {
@@ -859,11 +855,11 @@ iskw(register char *s)
 	register char *cp = s;
 
 	/* Get token length. */
-	while (++cp, isidchr(*cp))
+	while (++cp, isidchr((int)*cp))
 		i++;
 
-	while (cp = *ss++) {
-		if (!STRNCMP(s,cp,i) && !isidchr(cp[i]))
+	while ((cp = *ss++)) {
+		if (!STRNCMP(s,cp,i) && !isidchr((int)cp[i]))
 			return (i);
 	}
 	return (0);

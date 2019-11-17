@@ -26,19 +26,14 @@
 # include <errno.h>
 # include <string.h>
 # include <stdlib.h>
-void
-error(char *s)
-{
-fprintf(stderr, "\n%s: line %d: %s\n", ifile, iline, s);
-# ifndef gcos
-fprintf(stderr, "%s quits\n", progname);
-exit(1);
-# endif
-# ifdef gcos
-fprintf(stderr, "run terminated due to error condition detected by tbl preprocessor\n");
-exit(0);
-# endif
+
+int
+error(const char *s) {
+	fprintf(stderr, "\n%s: line %d: %s\n", ifile, iline, s);
+	fprintf(stderr, "%s quits\n", progname);
+	return -1;
 }
+
 char *
 errmsg(int errnum)
 {
@@ -48,8 +43,9 @@ char *
 gets1(char **bp, char **sp, size_t *zp)
 {
 char *s, *p = 0;
-int c, n = 0;
+int c;
 int nbl;
+size_t n = 0;
 for (;;)
 	{
 	iline++;
@@ -96,8 +92,8 @@ for (;;)
 return(p);
 }
 # define BACKMAX 500
-char backup[BACKMAX];
-char *backp = backup;
+static char backup[BACKMAX];
+static char *backp = backup;
 void
 un1getc(int c)
 {

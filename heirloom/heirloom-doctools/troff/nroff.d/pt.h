@@ -10,9 +10,10 @@ extern char	*skipstr(char *);
 extern char	*getstr(char *, char *);
 extern char	*getint(char *, int *);
 extern void	specnames(void);
-extern int	findch(register char *);
+extern int	findch(register const char *);
 extern void	twdone(void);
 extern void	ptout1(void);
+void ptout(tchar);
 extern char	*plot(char *);
 extern void	move(void);
 extern void	ptlead(void);
@@ -83,3 +84,26 @@ extern void	casedummy(void);
 #define	getascender()		0
 #define	getdescender()		0
 #define	getfzoom()		0
+
+/* typo additions - rwf */
+#define	caseadjlapenalty	casedummy
+#define caseadjpenalty	casedummy
+#define	caseelpchar	casedummy
+#define	caseelppen	casedummy
+#define	caseexhyp	casedummy
+#define caselastlinestretch	casedummy
+#define	caseletcalc	casedummy
+#define	caseletpen	casedummy
+#define	caseletshp	casedummy
+#define	caseletspc	casedummy
+#define	caseletstren	casedummy
+#define	caseletthresh	casedummy
+#define caselinepenalty	casedummy
+#define caselooseness	casedummy
+#define caseoverrunpenalty	casedummy
+#define caserhanglevel	casedummy
+#define casewrdspc	casedummy
+#define casewscalc	casedummy
+#define casewsmark	casedummy
+#define casewsmin	casedummy
+#define casewswarn	casedummy

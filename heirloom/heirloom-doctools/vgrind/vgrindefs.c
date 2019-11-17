@@ -23,6 +23,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include "global.h"
+
 /*
  * grindcap - routines for dealing with the language definitions data base
  *	(code stolen almost totally from termcap)
@@ -37,6 +39,11 @@
  * in string capabilities.  We don't use stdio because the editor
  * doesn't, and because living w/o it is not hard.
  */
+
+int tgetent(char *bp, char *name, char *file);
+int tgetnum(char *id);
+int tgetflag(char *id);
+char * tgetstr(char *id, char **area);
 
 static	char *tbuf;
 static	char *filename;
@@ -134,7 +141,7 @@ tnchktc(void)
 	/* p now points to beginning of last field */
 	if (p[0] != 't' || p[1] != 'c')
 		return(1);
-	strcpy(tcname,p+3);
+	n_strcpy(tcname, p+3, 16);
 	q = tcname;
 	while (q && *q != ':')
 		q++;
@@ -154,7 +161,7 @@ tnchktc(void)
 		write(2, vgrind_msg, strlen(vgrind_msg));
 		q[BUFSIZ - (p-tbuf)] = 0;
 	}
-	strcpy(p, q+1);
+	n_strcpy(p, q+1, BUFSIZ - (p - holdtbuf));
 	tbuf = holdtbuf;
 	return(1);
 }
@@ -231,7 +238,7 @@ tgetnum(char *id)
 		if (*bp == '0')
 			base = 8;
 		i = 0;
-		while (isdigit(*bp))
+		while (isdigit((int)*bp))
 			i *= base, i += *bp++ - '0';
 		return (i);
 	}
@@ -300,7 +307,7 @@ tdecode(register char *str, char **area)
 	register int c;
 
 	cp = *area;
-	while (c = *str++) {
+	while ((c = *str++)) {
 	    if (c == ':' && *(cp-1) != '\\')
 		break;
 	    *cp++ = c;

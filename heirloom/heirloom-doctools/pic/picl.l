@@ -12,6 +12,8 @@
 
 /*	Sccsid @(#)picl.l	1.9 (gritter) 8/6/06	*/
 %}
+%option noyywrap
+%option nounput
 %Start A str def xsc br thru sh
 %e 1700
 %k 150
@@ -43,25 +45,17 @@
 #define	witchcraft	yybgin-yysvec-1
 #endif	/* !FLEX_SCANNER */
 
-extern	char	*filename;
 extern	struct	symtab	symtab[];
-
-void	pbstr(char *);
-void	dodef(struct symtab *stp);
-void	undefine(char *s);
-void	shell_init(void), shell_exec(void), shell_text(char *);
-void	endfor(void);
 
 int	yyback(int *, int);
 int	yylook(void);
-int	yywrap(void);
 
 #define	CADD	cbuf[clen++]=yytext[0]; \
 		if (clen>=CBUFLEN-1) { WARNING("string too long", cbuf); BEGIN A; }
 #define	CBUFLEN	500
-char	cbuf[CBUFLEN];
-int	c, clen, cflag, delim;
-int	ifsw	= 0;	/* 1 if if statement in progress */
+static char	cbuf[CBUFLEN];
+static int	c, clen, delim;
+static int	ifsw	= 0;	/* 1 if if statement in progress */
 %}
 
 A	[a-zA-Z_]
@@ -91,8 +85,8 @@ FWS	([ \t]|\\\n)
 <A>"]"		{ BEGIN br; return(ST); }
 <A>"{"{WS}*(#.*)?\n+	{ return(yylval.i = yytext[0]); }
 
-<A>^".PS".*	{ if (curfile == infile) WARNING(".PS found inside .PS/.PE"); }
-<A>^".PE".*	{ if (curfile == infile) {
+<A>^"."{WS}*"PS".*	{ if (curfile == infile) WARNING(".PS found inside .PS/.PE"); }
+<A>^"."{WS}*"PE".*	{ if (curfile == infile) {
 			yylval.p = PEstring = tostring(yytext);
 			return(EOF);
 		  }
@@ -281,7 +275,7 @@ FWS	([ \t]|\\\n)
 				pbstr(p->s_val.p);
 				dprintf("pushing back `%s'\n", p->s_val.p);
 			}
-		} else if (islower(yytext[0])) {
+		} else if (islower((int)yytext[0])) {
 			yylval.p = tostring(yytext);
 			return(VARNAME);
 		} else {
@@ -304,10 +298,3 @@ FWS	([ \t]|\\\n)
 <A>.		return(yylval.i = yytext[0]);
 
 %%
-
-#ifdef	FLEX_SCANNER
-void xxcruft(void)
-{
-	unput(0);
-}
-#endif	/* FLEX_SCANNER */

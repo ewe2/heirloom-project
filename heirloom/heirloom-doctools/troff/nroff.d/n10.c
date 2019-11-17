@@ -34,6 +34,8 @@
  * Portions Copyright (c) 2005 Gunnar Ritter, Freiburg i. Br., Germany
  *
  * Sccsid @(#)n10.c	1.33 (gritter) 12/25/06
+ *
+ * Portions Copyright (c) 2014 Carsten Kunze <carsten.kunze@arcor.de>
  */
 
 /*
@@ -52,6 +54,7 @@ n10.c
 Device interfaces
 */
 
+#include <stdio.h>
 #include <limits.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -68,19 +71,14 @@ Device interfaces
 #include "ext.h"
 #include "tw.h"
 #include "pt.h"
+#include "bst.h"
 
 struct t t;	/* terminal characteristics */
 
-int	dtab;
-int	plotmode;
-int	esct;
+static int	dtab;
+static int	esct;
 
-char	*xchname;		/* hy, em, etc. */
-short	*xchtab;		/* indexes into chname[] */
-char	*codestr;
-char	*chname;
-short	*chtab;
-int	nchtab = 0;
+int	nchtab;
 
 int	*bdtab;
 int	*fontlab;
@@ -114,391 +112,134 @@ int	c_dagger;
 int	c_isalnum;
 
 int	utf8;
+int	tlp;
 
-static char tab_lp[] = "\
-lp\n\
-bset	0\n\
-breset	0\n\
-Hor	24\n\
-Vert	40\n\
-Newline	40\n\
-Char	24\n\
-Em	24\n\
-Halfline	20\n\
-Adj	24\n\
-twinit	\"\"\n\
-twrest	\"\"\n\
-twnl	\"\\n\"\n\
-hlr	\"\"\n\
-hlf	\"\"\n\
-flr	\"\\0337\"\n\
-bdon	\"\"\n\
-bdoff	\"\"\n\
-iton	\"\"\n\
-itoff	\"\"\n\
-ploton	\"\"\n\
-plotoff	\"\"\n\
-up	\"\"\n\
-down	\"\"\n\
-right	\"\"\n\
-left	\"\"\n\
-\n\
-charset\n\
-em 1 -\n\
-hy 1 -\n\
-\\- 1 -\n\
-rs 1 %\\134\n\
-dq 1 %\\042\n\
-bu 1 +\\bo\n\
-sq 2 \\[]\n\
-ru 1 _\n\
-14 3 1/4\n\
-12 3 1/2\n\
-34 3 3/4\n\
-fi 2 fi\n\
-fl 2 fl\n\
-ff 2 ff\n\
-Fi 3 ffi\n\
-Fl 3 ffl\n\
-de 1 \\344o\\304\n\
-dg 1 |\\b-\n\
-fm 1 '\n\
-ct 1 c\\b/\n\
-rg 1 r\\bO\n\
-co 1 c\\bO\n\
-pl 1 +\n\
-mi 1 -\n\
-eq 1 =\n\
-** 1 *\n\
-sc 1 j\\bf\n\
-aa 1 '\n\
-ga 1 `\n\
-ul 1 _\n\
-sl 1 /\n\
-*a 1 <\\ba\n\
-*b 1 ,\\bB\n\
-*g 1 <\\by\n\
-*d 1 <\\bo\n\
-*e 1 -\\bc\n\
-*z 1 ,\\bL\n\
-*y 1 ,\\bn\n\
-*h 1 -\\b0\n\
-*i 1 ,\\bi\n\
-*k 1 k\n\
-*l 1 \\\\\\b>\n\
-*m 1 ,\\bu\n\
-*n 1 ,\\bv\n\
-*c 1 ,\\b3\n\
-*o 1 o\n\
-*p 1 -\\bn\n\
-*r 1 p\n\
-*s 1 -\\bo\n\
-*t 1 ~\\bt\n\
-*u 1 u\n\
-*f 1 /\\bo\n\
-*x 1 x\n\
-*q 1 |\\bu\n\
-*w 1 u\\bw\n\
-*A 1 A\n\
-*B 1 B\n\
-*G 2 ~\\b|~\n\
-*D 2 _\\b/_\\b\\\\\n\
-*E 1 E\n\
-*Z 1 Z\n\
-*Y 1 H\n\
-*H 1 -\\bO\n\
-*I 1 I\n\
-*K 1 K\n\
-*L 2 /\\\\\n\
-*M 1 M\n\
-*N 1 N\n\
-*C 1 _\\b-\\b~\n\
-*O 1 O\n\
-*P 2 ~\\b|~\\b|\n\
-*R 1 P\n\
-*S 1 ~\\b_\\b>\n\
-*T 1 T\n\
-*U 1 Y\n\
-*F 1 |\\bO\n\
-*X 1 X\n\
-*Q 1 |\\bU\n\
-*W 2 _\\b(_\\b)\n\
-ts 1 s\n\
-sr 2 \\\\/\n\
-rn 1 \\0337_\\n\n\
->= 1 _\\b>\n\
-<= 1 _\\b<\n\
-== 1 _\\b=\n\
-~= 1 ~\\b=\n\
-ap 1 ~\n\
-!= 1 =\\b/\n\
--> 2 ->\n\
-<- 2 <-\n\
-ua 1 |\\b^\n\
-da 1 |\\bv\n\
-mu 1 x\n\
-di 1 -\\b:\n\
-+- 1 +\\b_\n\
-cu 1 U\n\
-ca 3 (^)\n\
-sb 2 (_\\b~\n\
-sp 2 _\\b~)\n\
-ib 2 (~\\b_\\b=\n\
-ip 2 ~\\b_\\b=)\n\
-if 2 oo\n\
-pd 1 6\n\
-gr 1 ~\\bV\n\
-no 1 -\n\
-is 1 '\\b,\\bI\n\
-pt 2 oc\n\
-es 1 /\\bO\n\
-mo 1 -\\bC\n\
-br 1 |\n\
-dd 1 |\\b=\n\
-rh 2 =>\n\
-lh 2 <=\n\
-or 1 |\n\
-ci 1 O\n\
-lt 1 (\n\
-lb 1 (\n\
-rt 1 )\n\
-rb 1 )\n\
-lk 1 |\n\
-rk 1 |\n\
-bv 1 |\n\
-lf 1 |\n\
-rf 1 |\n\
-lc 1 |\n\
-rc 1 |\n";
+static int bst_intcmp(union bst_val, union bst_val);
+static int bst_strcmp(union bst_val, union bst_val);
 
-#ifdef	EUC
-static char tab_utf8[] = "\
-utf8\n\
-bset	0\n\
-breset	0\n\
-Hor	24\n\
-Vert	40\n\
-Newline	40\n\
-Char	24\n\
-Em	24\n\
-Halfline	20\n\
-Adj	24\n\
-twinit	\"\"\n\
-twrest	\"\"\n\
-twnl	\"\\n\"\n\
-hlr	\"\"\n\
-hlf	\"\"\n\
-flr	\"\\0337\"\n\
-bdon	\"\"\n\
-bdoff	\"\"\n\
-iton	\"\"\n\
-itoff	\"\"\n\
-ploton	\"\"\n\
-plotoff	\"\"\n\
-up	\"\"\n\
-down	\"\"\n\
-right	\"\"\n\
-left	\"\"\n\
-\n\
-charset\n\
-em 1 %\\342%\\200%\\224\n\
-en 1 %\\342%\\200%\\223\n\
-hy 1 %\\342%\\200%\\220\n\
-\\- 1 -\n\
-rs 1 %\\134\n\
-dq 1 %\\042\n\
-bu 1 %\\342%\\200%\\242\n\
-sq 1 %\\342%\\226%\\241\n\
-ru 1 %\\342%\\216%\\275\n\
-14 1 %\\302%\\274\n\
-12 1 %\\302%\\275\n\
-34 1 %\\302%\\276\n\
-fi 2 fi\n\
-fl 2 fl\n\
-ff 2 ff\n\
-Fi 3 ffi\n\
-Fl 3 ffl\n\
-de 1 %\\302%\\260\n\
-dg 1 %\\342%\\200%\\240\n\
-fm 1 '\n\
-ct 1 %\\302%\\242\n\
-rg 1 %\\302%\\256\n\
-co 1 %\\302%\\251\n\
-pl 1 +\n\
-mi 1 %\\342%\\210%\\222\n\
-eq 1 =\n\
-** 1 *\n\
-sc 1 %\\302%\\247\n\
-aa 1 '\n\
-ga 1 `\n\
-ul 1 %\\342%\\216%\\275\n\
-sl 1 /\n\
-*a 1 %\\316%\\261\n\
-*b 1 %\\316%\\262\n\
-*g 1 %\\316%\\263\n\
-*d 1 %\\316%\\264\n\
-*e 1 %\\316%\\265\n\
-*z 1 %\\316%\\266\n\
-*y 1 %\\316%\\267\n\
-*h 1 %\\316%\\270\n\
-*i 1 %\\316%\\271\n\
-*k 1 %\\316%\\272\n\
-*l 1 %\\316%\\273\n\
-*m 1 %\\316%\\274\n\
-*n 1 %\\316%\\275\n\
-*c 1 %\\316%\\276\n\
-*o 1 %\\316%\\277\n\
-*p 1 %\\317%\\200\n\
-*r 1 %\\317%\\201\n\
-*s 1 %\\317%\\203\n\
-*t 1 %\\317%\\204\n\
-*u 1 %\\317%\\205\n\
-*f 1 %\\317%\\206\n\
-*x 1 %\\317%\\207\n\
-*q 1 %\\317%\\210\n\
-*w 1 %\\317%\\211\n\
-*A 1 %\\316%\\221\n\
-*B 1 %\\316%\\222\n\
-*G 1 %\\316%\\223\n\
-*D 1 %\\316%\\224\n\
-*E 1 %\\316%\\225\n\
-*Z 1 %\\316%\\226\n\
-*Y 1 %\\316%\\227\n\
-*H 1 %\\316%\\230\n\
-*I 1 %\\316%\\231\n\
-*K 1 %\\316%\\232\n\
-*L 1 %\\316%\\233\n\
-*M 1 %\\316%\\234\n\
-*N 1 %\\316%\\235\n\
-*C 1 %\\316%\\236\n\
-*O 1 %\\316%\\237\n\
-*P 1 %\\316%\\240\n\
-*R 1 %\\316%\\241\n\
-*S 1 %\\316%\\243\n\
-*T 1 %\\316%\\244\n\
-*U 1 %\\316%\\245\n\
-*F 1 %\\316%\\246\n\
-*X 1 %\\316%\\247\n\
-*Q 1 %\\316%\\250\n\
-*W 1 %\\316%\\251\n\
-ts 1 %\\317%\\202\n\
-sr 1 %\\342%\\210%\\232\n\
-rn 1 %\\342%\\216%\\272\n\
->= 1 %\\342%\\211%\\245\n\
-<= 1 %\\342%\\211%\\244\n\
-== 1 %\\342%\\211%\\241\n\
-~= 1 %\\342%\\211%\\203\n\
-~~ 1 %\\342%\\211%\\210\n\
-ap 1 %\\342%\\210%\\274\n\
-!= 1 %\\342%\\211%\\223\n\
--> 1 %\\342%\\206%\\222\n\
-<- 1 %\\342%\\206%\\220\n\
-ua 1 %\\342%\\206%\\221\n\
-da 1 %\\342%\\206%\\223\n\
-mu 1 %\\303%\\227\n\
-di 1 %\\303%\\267\n\
-+- 1 %\\302%\\261\n\
-cu 1 %\\342%\\210%\\252\n\
-ca 1 %\\342%\\210%\\251\n\
-sb 1 %\\342%\\212%\\202\n\
-sp 1 %\\342%\\212%\\201\n\
-ib 1 %\\342%\\212%\\207\n\
-ip 1 %\\342%\\212%\\206\n\
-if 1 %\\342%\\210%\\236\n\
-pd 1 %\\342%\\210%\\202\n\
-gr 1 %\\342%\\210%\\207\n\
-no 1 %\\302%\\254\n\
-is 1 %\\342%\\210%\\253\n\
-pt 1 %\\342%\\210%\\235\n\
-es 1 %\\342%\\210%\\205\n\
-mo 1 %\\342%\\210%\\210\n\
-br 1 %\\342%\\224%\\202\n\
-dd 1 %\\342%\\200%\\241\n\
-rh 1 %\\342%\\230%\\236\n\
-lh 1 %\\342%\\230%\\234\n\
-or 1 |\n\
-ci 1 %\\342%\\227%\\213\n\
-bx 1 %\\342%\\226%\\240\n\
-Sl 1 %\\342%\\204%\\223\n\
-fa 1 %\\342%\\210%\\200\n\
-te 1 %\\342%\\210%\\203\n\
-al 1 %\\342%\\204%\\265\n\
-Ox 1 %\\342%\\212%\\227\n\
-O+ 1 %\\342%\\212%\\225\n\
-tm 1 %\\342%\\204%\\242\n\
-`` 1 %\\342%\\200%\\234\n\
-'' 1 %\\342%\\200%\\235\n\
--+ 1 %\\342%\\210%\\223\n\
-lt 1 %\\342%\\216%\\247\n\
-lb 1 %\\342%\\216%\\251\n\
-rt 1 %\\342%\\216%\\253\n\
-rb 1 %\\342%\\216%\\255\n\
-lk 1 %\\342%\\216%\\250\n\
-rk 1 %\\342%\\216%\\254\n\
-bv 1 %\\342%\\216%\\252\n\
-lf 1 %\\342%\\216%\\212\n\
-rf 1 %\\342%\\216%\\213\n\
-lc 1 %\\342%\\216%\\210\n\
-rc 1 %\\342%\\216%\\211\n";
-#endif	/* EUC */
+static int nch;
+
+static struct bst utf8oc  = { NULL, bst_intcmp };
+static struct bst chnames = { NULL, bst_strcmp };
+
+#define UTF8OC_KEY(c) ((union bst_val)(int)c)
+#define UTF8OC_VAL(s) ((union bst_val)(void *)s)
 
 void
 ptinit(void)
 {
-	register int i;
-	register char *p, *cp;
+	int i, j;
+	char *p, c, *p2;
 	char *tt;
+	size_t ttl;
 	int nread, fd;
 	struct stat stbuf;
-	char check[50];
+	char *check;
 	extern int initbdtab[], initfontlab[];
+	int nl;
+	size_t codsiz;
+	char *codestr;
+	char *code;
+
+	check = malloc(1024);
+	bdtab = initbdtab;
+	fontlab = initfontlab;
+	ttl = strlen(termtab) + strlen(devname) + 1;
+	tt = malloc(ttl);
+	n_strcpy(tt, termtab, ttl);
+	if (strcmp(devname, "locale")) {
+		n_strcat(tt, devname, ttl);
+		if (!strcmp(devname, "lp"))
+			tlp = 1;
+	}
+	else {
+#ifdef	EUC
+		wchar_t	wc;
+		if (mb_cur_max > 1 && mbtowc(&wc, "\303\266", 2) == 2 &&
+		    wc == 0xF6 && mbtowc(&wc, "\342\202\254", 3) == 3 &&
+		    wc == 0x20AC) {
+			csi_width[0] = 0;
+			utf8 = 1;
+			n_strcat(tt, "utf8", ttl); /* shorter than "locale" */
+			avl_add(&utf8oc, UTF8OC_KEY('-'),
+			    UTF8OC_VAL(strdup("\xe2\x80\x90")));
+			avl_add(&utf8oc, UTF8OC_KEY('`'),
+			    UTF8OC_VAL(strdup("\xe2\x80\x98")));
+			avl_add(&utf8oc, UTF8OC_KEY('\''),
+			    UTF8OC_VAL(strdup("\xe2\x80\x99")));
+		} else
+		{
+#endif
+			tlp = 1;
+			n_strcat(tt, "lp", ttl); /* shorter than "locale" */
+#ifdef	EUC
+		}
+#endif
+	}
+	if ((fd = open(tt, O_RDONLY)) < 0) {
+		errprint("cannot open %s", tt);
+		exit(-1);
+	}
+	fstat(fd, &stbuf);
+	codestr = malloc(stbuf.st_size + 1);
+	nread = read(fd, codestr, stbuf.st_size);
+	close(fd);
+	codestr[stbuf.st_size] = 0;
+
+	p = codestr;
+	codsiz = 0;
+	while (1) {
+		i = 0;
+		while ((c = *p) && c != '\n') {
+			check[i++] = c;
+			p++;
+		}
+		check[i] = 0;
+		if (!c) {
+			errprint("Unexpected end of %s", tt);
+			exit(1);
+		}
+		while (*p == '\n') p++;
+		if (!strcmp(check, "charset")) break;
+		j = 0;
+		while (j < i &&  check[j] != ' ' && check[j] != '\t' ) j++;
+		while (j < i && (check[j] == ' ' || check[j] == '\t')) j++;
+		codsiz += i-j;
+	}
+	while (1) {
+		char c0;
+		int cmt;
+		i = 0;
+		while ((c = *p) && c != ' ' && c != '\t' && c != '\n') {
+			p++;
+			if (!i++) c0 = c;
+		}
+		if (i == 1 && c0 == '#' && c == ' ') {
+			cmt = 1;
+		} else {
+			cmt = 0;
+		}
+		if (!cmt) {
+			while ((c = *p) && (c == ' ' || c == '\t')) p++;
+			while ((c = *p) && c >= '0' && c <= '9') p++;
+			while ((c = *p) && (c == ' ' || c == '\t')) p++;
+			while ((c = *p) && c != ' ' && c != '\t' && c != '\n') {
+				p++;
+				codsiz++;
+			}
+			codsiz++;
+		}
+		while ((c = *p) && c != '\n') p++;
+		if (!c) break;
+		while (*p == '\n') p++;
+	}
 
 	t.codetab = calloc(NROFFCHARS-_SPECCHAR_ST, sizeof *t.codetab);
 	t.width = calloc(NROFFCHARS, sizeof *t.width);
-	xchname = calloc(4 * (NROFFCHARS-_SPECCHAR_ST), sizeof *xchname);
-	xchtab = calloc(NROFFCHARS-_SPECCHAR_ST, sizeof *xchtab);
-	chname = xchname;
-	chtab = xchtab;
-	bdtab = initbdtab;
-	fontlab = initfontlab;
-	tt = malloc(strlen(termtab) + strlen(devname) + 1);
-	strcpy(tt, termtab);
-	strcat(tt, devname);
-	termtab = tt;
-	if (strcmp(devname, "locale") == 0) {
-#ifdef	EUC
-		wchar_t	wc;
-		if (mb_cur_max > 1 &&
-				mbtowc(&wc, "\303\266", 2) == 2 &&
-					wc == 0xF6 &&
-				mbtowc(&wc, "\342\202\254", 3) == 3 &&
-					wc == 0x20AC) {
-			codestr = tab_utf8;
-			nread = sizeof tab_utf8 - 1;
-			csi_width[0] = 0;
-			utf8 = 1;
-		} else
-#endif	/* EUC */
-		{
-			codestr = tab_lp;
-			nread = sizeof tab_lp - 1;
-		}
-	} else if ((fd = open(termtab, O_RDONLY)) < 0) {
-		if (strcmp(devname, "lp")) {
-			errprint("cannot open %s", termtab);
-			exit(-1);
-		}
-		codestr = tab_lp;
-		nread = sizeof tab_lp - 1;
-	} else {
-		fstat(fd, &stbuf);
-		codestr = setbrk((int) stbuf.st_size);
-
-		nread = read(fd, codestr, (int) stbuf.st_size);
-		close(fd);
-	}
+	code = malloc(codsiz);
 
 	p = codestr;
+	p2 = code;
 	p = skipstr(p);		/* skip over type, could check */
 	p = skipstr(p); p = getint(p, &t.bset);
 	p = skipstr(p); p = getint(p, &t.breset);
@@ -509,24 +250,24 @@ ptinit(void)
 	p = skipstr(p); p = getint(p, &t.Em);
 	p = skipstr(p); p = getint(p, &t.Halfline);
 	p = skipstr(p); p = getint(p, &t.Adj);
-	p = skipstr(p); p = getstr(p, t.twinit = p);
-	p = skipstr(p); p = getstr(p, t.twrest = p);
-	p = skipstr(p); p = getstr(p, t.twnl = p);
-	p = skipstr(p); p = getstr(p, t.hlr = p);
-	p = skipstr(p); p = getstr(p, t.hlf = p);
-	p = skipstr(p); p = getstr(p, t.flr = p);
-	p = skipstr(p); p = getstr(p, t.bdon = p);
-	p = skipstr(p); p = getstr(p, t.bdoff = p);
-	p = skipstr(p); p = getstr(p, t.iton = p);
-	p = skipstr(p); p = getstr(p, t.itoff = p);
-	p = skipstr(p); p = getstr(p, t.ploton = p);
-	p = skipstr(p); p = getstr(p, t.plotoff = p);
-	p = skipstr(p); p = getstr(p, t.up = p);
-	p = skipstr(p); p = getstr(p, t.down = p);
-	p = skipstr(p); p = getstr(p, t.right = p);
-	p = skipstr(p); p = getstr(p, t.left = p);
+	p = skipstr(p); p = getstr(p, t.twinit  = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.twrest  = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.twnl    = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.hlr     = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.hlf     = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.flr     = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.bdon    = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.bdoff   = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.iton    = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.itoff   = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.ploton  = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.plotoff = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.up      = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.down    = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.right   = p2); p2 += strlen(p2)+1;
+	p = skipstr(p); p = getstr(p, t.left    = p2); p2 += strlen(p2)+1;
 
-	getstr(p, check);
+	p = getstr(p, check);
 	if (strcmp(check, "charset") != 0) {
 		errprint("device table apparently curdled");
 		exit(1);
@@ -536,31 +277,48 @@ ptinit(void)
 		t.width[i] = 1;	/* default widths */
 
 	i = 0;
-/* this ought to be a pointer array and in place in codestr */
-	cp = chname + 1;	/* bug if starts at 0, in setch */
+	nl = 1;
+next_line:
 	while (p < codestr + nread) {
-		while (*p == ' ' || *p == '\t' || *p == '\n')
+		char *s;
+		while ((c = *p) == ' ' || c == '\t' || c == '\n') {
+			if (c == '\n') nl = 1;
 			p++;
+		}
+		if (c == '#' && !nl) {
+			while (*p && *p != '\n') p++;
+			while (*p == '\n') p++;
+		}
+		if (!*p) break; /* last line ends with comment */
+		nl = 0;
 		if (i + _SPECCHAR_ST >= NROFFCHARS) {
-			errprint("too many names in charset for %s", termtab);
+			errprint("too many names in charset for %s", tt);
 			exit(1);
 		}
-		chtab[i] = cp - chname;	/* index, not pointer */
-		*cp++ = *p++;	/* 2-char names */
-		*cp++ = *p++;
-		*cp++ = '\0';
+		s = p;
+		j = 0;
+		while ((c = *p) != ' ' && c != '\t') {
+			p++;
+			j++;
+		}
+		if (j == 1 && p[-1] == '#' && c == ' ') {
+			while (*p && *p != '\n') p++;
+			goto next_line;
+		}
+		*p++ = '\0';
 		while (*p == ' ' || *p == '\t')
 			p++;
 		t.width[i+_SPECCHAR_ST] = *p++ - '0';
 		while (*p == ' ' || *p == '\t')
 			p++;
-		t.codetab[i] = p;
-		p = getstr(p, p);	/* compress string */
+		t.codetab[i] = p2;
+		p = getstr(p, p2);	/* compress string */
+		p2 += strlen(p2) + 1;
 		p++;
 		i++;
-		nchtab++;
+		addch(s);
 	}
-
+	nchtab = nch;
 	sps = EM;
 	ses = EM;
 	ics = EM * 2;
@@ -577,6 +335,9 @@ ptinit(void)
 	specnames();	/* install names like "hyphen", etc. */
 	if (eqflg)
 		t.Adj = t.Hor;
+	free(codestr);
+	free(tt);
+	free(check);
 }
 
 char *
@@ -595,7 +356,7 @@ skipstr (	/* skip over leading space plus string */
 char *
 getstr (	/* find next string in s, copy to t */
     char *s,
-    char *t
+    char *_t
 )
 {
 	int quote = 0;
@@ -614,31 +375,37 @@ getstr (	/* find next string in s, copy to t */
 		if (!quote && (*s == ' ' || *s == '\t' || *s == '\n'))
 			break;
 		if (*s != '\\')
-			*t++ = *s++;
+			*_t++ = *s++;
 		else {
 			s++;	/* skip \\ */
 			if (isdigit((unsigned char)s[0]) &&
 			    isdigit((unsigned char)s[1]) &&
 			    isdigit((unsigned char)s[2])) {
-				*t++ = (s[0]-'0')<<6 | (s[1]-'0')<<3 | s[2]-'0';
+				*_t++ = (s[0]-'0')<<6 | (s[1]-'0')<<3 | (s[2]-'0');
+				s += 2;
+			} else if (s[0] == 'x' &&
+			           isxdigit((unsigned char)s[1]) &&
+			           isxdigit((unsigned char)s[2])) {
+				*_t++ = hex2nibble(s[1]) << 4 |
+				       hex2nibble(s[2])      ;
 				s += 2;
 			} else if (isdigit((unsigned char)s[0])) {
-				*t++ = *s - '0';
+				*_t++ = *s - '0';
 			} else if (*s == 'b') {
-				*t++ = '\b';
+				*_t++ = '\b';
 			} else if (*s == 'n') {
-				*t++ = '\n';
+				*_t++ = '\n';
 			} else if (*s == 'r') {
-				*t++ = '\r';
+				*_t++ = '\r';
 			} else if (*s == 't') {
-				*t++ = '\t';
+				*_t++ = '\t';
 			} else {
-				*t++ = *s;
+				*_t++ = *s;
 			}
 			s++;
 		}
 	}
-	*t = '\0';
+	*_t = '\0';
 	return s;
 }
 
@@ -664,7 +431,7 @@ specnames(void)
 {
 	static struct {
 		int	*n;
-		char	*v;
+		const char	*v;
 	} spnames[] = {
 		{ &c_hyphen, "hy"	},
 		{ &c_emdash, "em"	},
@@ -694,16 +461,18 @@ specnames(void)
 
 
 int 
-findch (	/* find char s in chname */
-    register char *s
-)
-{
-	register int	i;
+findch(const char *s) {
+	struct bst_node *n;
+	if (bst_srch(&chnames, (union bst_val)(void *)s, &n))
+		return 0;
+	return n->data.i + _SPECCHAR_ST;
+}
 
-	for (i = 0; chtab[i] != 0; i++)
-		if (strcmp(s, &chname[chtab[i]]) == 0)
-			return(i + _SPECCHAR_ST);
-	return(0);
+int
+addch(char *s) {
+	avl_add(&chnames, (union bst_val)(void *)strdup(s),
+	    (union bst_val)(int)nch);
+	return nch++ + _SPECCHAR_ST;
 }
 
 void
@@ -721,7 +490,6 @@ twdone(void)
 	}
 	restore_tty();
 }
-
 
 void
 ptout(tchar i)
@@ -773,6 +541,7 @@ ptout1(void)
 #endif /* EUC */
 	tchar * q, i;
 	static int oxfont = FT;	/* start off in roman */
+	struct bst_node *uconv;
 
 	for (q = oline; q < olinep; q++) {
 		i = *q;
@@ -806,6 +575,8 @@ ptout1(void)
 			if ((jj = wcwidth(jj)) < 0)
 				jj = 0;
 			phyw = w = t.Char * csi_width[jj];
+			if (iszbit(i))
+				w = 0;
 		} else {
 #endif /* EUC */
 		phyw = w = t.Char * t.width[k];
@@ -840,30 +611,9 @@ ptout1(void)
 		else
 			j = 1;	/* number of overstrikes for bold */
 #ifdef	EUC
-		if (k == '-' && utf8) {
-			/*
-			 * With -Tlocale and a UTF-8 locale, "-" is replaced
-			 * by a UTF-8 hyphen, and "\-" remains the ASCII
-			 * hyphen-minus character. This is because in manual
-			 * pages, "\-" represents the ASCII option
-			 * introduction character, and converting it to a
-			 * UTF-8 minus character would make it impossible
-			 * to copy-and-paste option descriptions.
-			 */
-			savep = "%\342%\200%\220";
-			goto loop;
-		} else if (k == '`' && utf8) {
-			/*
-			 * Similar considerations apply to ` ' vs. \` \'.
-			 * The former are typographic single quotes, while
-			 * the latter are commonly used for the ASCII syntax
-			 * quotes in manual pages.
-			 */
-			savep = "%\342%\200%\230";
-			goto loop;
-		} else if (k == '\'' && utf8) {
-			savep = "%\342%\200%\231";
-			goto loop;
+		if (utf8 && !bst_srch(&utf8oc, UTF8OC_KEY(k), &uconv)) {
+			for (savep = uconv->data.p; *savep; savep++)
+				oput(*savep);
 		} else
 #endif
 			if (k < 128) {	/* ordinary ascii */
@@ -914,7 +664,7 @@ ptout1(void)
 					oput(' ');
 					allesc = 0;
 				} else {
-					if (isesc = *codep=='%') /* escape */
+					if ((isesc = *codep=='%')) /* escape */
 						codep++;
 					else
 						allesc = 0;
@@ -936,7 +686,9 @@ ptout1(void)
 		}
 		if (!w)
 			for (j = phyw / t.Char; j > 0; j--)
+			{
 				oput('\b');
+			}
 	}
 }
 
@@ -984,7 +736,7 @@ void
 move(void)
 {
 	register int k;
-	register char	*i, *j;
+	register const char	*i, *j;
 	char	*p, *q;
 	int	iesct, dt;
 
@@ -1079,10 +831,59 @@ dostop(void)
 
 /*ARGSUSED*/
 void
-newpage(int unused)
+newpage(int unused __unused)
 {
 	realpage++;
 }
 
 void
 pttrailer(void){;}
+
+void
+caseutf8conv(void) {
+#ifdef EUC
+	tchar tc;
+	int i, o;
+	struct bst_node *n;
+	char mb[MB_LEN_MAX+1];
+	if (skip(1)) return;
+	i = cbits(getch());
+	if (skip(0)) {
+		if (!bst_srch(&utf8oc, UTF8OC_KEY(i), &n)) {
+			free(n->data.p);
+			avl_del(&utf8oc, UTF8OC_KEY(i));
+		}
+	} else {
+		char *s;
+		o = cbits(tc = getch());
+		if (o < 256) {
+			s = malloc(2);
+			s[0] = o;
+			s[1] = 0;
+		} else if (multi_locale && (o >= nchtab + _SPECCHAR_ST)) {
+			mb[wctomb(mb, tr2un(o, fbits(tc)))] = 0;
+			s = strdup(mb);
+		} else {
+			s = strdup(t.codetab[o-_SPECCHAR_ST]);
+		}
+		if (bst_srch(&utf8oc, UTF8OC_KEY(i), &n)) {
+			avl_add(&utf8oc, UTF8OC_KEY(i), UTF8OC_VAL(s));
+		} else {
+			free(n->data.p);
+			n->data.p = s;
+		}
+	}
+#endif /* EUC */
+}
+
+static int
+bst_intcmp(union bst_val a, union bst_val b) {
+	return a.i < b.i ? -1 :
+	       a.i > b.i ?  1 :
+	                    0 ;
+}
+
+static int
+bst_strcmp(union bst_val a, union bst_val b) {
+	return strcmp(a.p, b.p);
+}

@@ -47,25 +47,32 @@ putsig (int nf, char **flds, int nref, char *nstline,
 
 	if (labels) {
 		if (nf == 0)	/* old */
-			sprintf(t, "%s%c", labtab[nref], labc[nref]);
+			snprintf(t, sizeof(t), "%s%c", labtab[nref],
+			    labc[nref]);
 		else {
 			*t = 0;
 			if (keywant)
-				fpar(nf, flds, t, keywant, 1, 0);
+				fpar(nf, flds, t, sizeof(t), keywant, 1, 0);
 			if (science && t[0] == 0) {
-				if (fpar(nf, flds, t, 'A', 1, 0) != 0) {
-					if (fpar(nf, flds, t2, 'D', 1, 0) != 0) {
-						strcat(t, ", ");
-						strcat(t, t2);
+				if (fpar(nf, flds, t, sizeof(t), 'A', 1, 0)
+				    != 0) {
+					if (fpar(nf, flds, t2, sizeof(t2),
+					    'D', 1, 0) != 0) {
+						n_strcat(t, ", ", sizeof(t));
+						n_strcat(t, t2, sizeof(t));
 					}
 				}
 			} else if (t[0] == 0) {
-				sprintf(format,
-					nmlen>0 ? "%%.%ds%%s" : "%%s%%s",
-					nmlen);
+				if (nmlen > 0) {
+					snprintf(format, sizeof(format),
+						"%%.%ds%%s", nmlen);
+				} else {
+					snprintf(format, sizeof(format),
+						"%%s%%s");
+				}
 				/* format is %s%s for default labels */
 				/* or %.3s%s eg if wanted */
-				if (fpar(nf, flds, t2, 'D', 1, 0)) {
+				if (fpar(nf, flds, t2, sizeof(t2), 'D', 1, 0)) {
 					sd = t2;
 					if (dtlen > 0) {
 						int n = strlen(sd) - dtlen;
@@ -76,8 +83,8 @@ putsig (int nf, char **flds, int nref, char *nstline,
 					sd = "";
 				}
 				t1[0] = 0;
-				fpar(nf, flds, t1, 'A', 1, 0);
-				sprintf(t, format, t1, sd);
+				fpar(nf, flds, t1, sizeof(t1), 'A', 1, 0);
+				snprintf(t, sizeof(t), format, t1, sd);
 			}
 			if (keywant) {
 				addon = 0;
@@ -98,17 +105,17 @@ putsig (int nf, char **flds, int nref, char *nstline,
 	}
 	else {
 		if (sort)
-			sprintf(t, "%c%d%c", FLAG, nref, FLAG);
+			snprintf(t, sizeof(t), "%c%d%c", FLAG, nref, FLAG);
 		else
-			sprintf(t, "%d", nref);
+			snprintf(t, sizeof(t), "%d", nref);
 	}
-	another = (sd = lookat()) ? prefix(".[", sd) : 0;
+	another = (sd = lookat()) ? prefix(sd, ".[") : 0;
 	if (another && (strcmp(".[\n", sd) != SAME))
-		fprintf(stderr, (char *)"File %s line %d: punctuation ignored from: %s",
+		fprintf(stderr, "File %s line %d: punctuation ignored from: %s",
 			Ifile, Iline, sd);
 	if ((strlen(sig) + strlen(t)) > MXSIG)
 		err("sig overflow (%d)", MXSIG);
-	strcat(sig, t);
+	n_strcat(sig, t, sizeof(sig));
 #if EBUG
 	fprintf(stderr, "sig is now %s leng %d\n",sig,strlen(sig));
 #endif
@@ -116,7 +123,7 @@ putsig (int nf, char **flds, int nref, char *nstline,
 	trimnl(endline);
 	stline = stbuff;
 	if (prevsig == 0) {
-		strcpy (stline, nstline);
+		n_strcpy (stline, nstline, sizeof(stbuff));
 		prevsig=1;
 	}
 	if (stline[2] || endline[2]) {
@@ -133,7 +140,8 @@ putsig (int nf, char **flds, int nref, char *nstline,
 	}
 	if (bare == 0) {
 		if (!another) {
-			sprintf(t1, "%s%s%s\n", stline, sig, endline);
+			snprintf(t1, sizeof(t1), "%s%s%s\n", stline, sig,
+			    endline);
 			if (strlen(t1) > MXSIG)
 				err("t1 overflow (%d)", MXSIG);
 			append(t1);
@@ -153,7 +161,7 @@ putsig (int nf, char **flds, int nref, char *nstline,
 		}
 		else {
 			if (labels) {
-				strcat(sig, ",\\|");
+				n_strcat(sig, ",\\|", sizeof(sig));
 			} else {
 				/*
 				 * Seperate reference numbers with AFLAG
@@ -161,10 +169,11 @@ putsig (int nf, char **flds, int nref, char *nstline,
 				 */
 				t1[0] = AFLAG;
 				t1[1] = '\0';
-				strcat(sig, t1);
+				n_strcat(sig, t1, sizeof(sig));
 			}
 			if (fo == ftemp) {	/* hide if need be */
-				sprintf(hidenam, "/tmp/rj%dc", (int)getpid());
+				snprintf(hidenam, NTFILE,
+				    "/tmp/rj%dc", (int)getpid());
 #if EBUG
 				fprintf(stderr, "hiding in %s\n", hidenam);
 #endif
@@ -187,7 +196,8 @@ putsig (int nf, char **flds, int nref, char *nstline,
 }
 
 char *
-fpar (int nf, char **flds, char *out, int c, int seq, int prepend)
+fpar (int nf, char **flds, char *out, size_t outsiz __unused, int c, int seq,
+    int prepend)
 {
 	char *p, *s;
 	int i, fnd = 0;
@@ -197,11 +207,11 @@ fpar (int nf, char **flds, char *out, int c, int seq, int prepend)
 			/* for titles use first word otherwise last */
 			if (c == 'T' || c == 'J') {
 				p = flds[i]+3;
-				if (prefix("A ", p))
+				if (prefix(p, "A "))
 					p += 2;
-				if (prefix("An ", p))
+				if (prefix(p, "An "))
 					p += 3;
-				if (prefix("The ", p))
+				if (prefix(p, "The "))
 					p += 4;
 				mycpy2(out, p, 20);
 				return(out);
@@ -221,7 +231,7 @@ fpar (int nf, char **flds, char *out, int c, int seq, int prepend)
 				mycpy(out, p+1);
 			}
 			else
-				strcpy(out, p+1);
+				n_strcpy(out, p+1, outsiz);
 			if (c == 'A' && prepend)
 				initadd(out, flds[i]+2, p);
 			return(out);
@@ -230,7 +240,7 @@ fpar (int nf, char **flds, char *out, int c, int seq, int prepend)
 }
 
 void
-putkey(int nf, char **flds, int nref, char *keystr)
+putkey(int nf, char **flds, int nref, const char *_keystr)
 {
 	char t1[50], *sf;
 	int ctype, i, count;
@@ -239,14 +249,14 @@ putkey(int nf, char **flds, int nref, char *keystr)
 	if (nf <= 0)
 		fprintf(fo, "%s%c%c", labtab[nref], labc[nref], sep);
 	else {
-		while (ctype = *keystr++) {
-			count = atoi(keystr);
-			if (*keystr=='+')
+		while ((ctype = *_keystr++)) {
+			count = atoi(_keystr);
+			if (*_keystr=='+')
 				count=999;
 			if (count <= 0)
 				count = 1;
 			for(i = 1; i <= count; i++) {
-				sf = fpar(nf, flds, t1, ctype, i, 1);
+				sf = fpar(nf, flds, t1, sizeof(t1), ctype, i, 1);
 				if (sf == 0)
 					break;
 				sf = artskp(sf);
@@ -261,7 +271,7 @@ putkey(int nf, char **flds, int nref, char *keystr)
 void
 tokeytab (const char *t, int nref)
 {
-	strcpy(labtab[nref]=lbp, t);
+	n_strcpy(labtab[nref]=lbp, t, sizeof(bflab) - (lbp - bflab));
 	while (*lbp++)
 		;
 }

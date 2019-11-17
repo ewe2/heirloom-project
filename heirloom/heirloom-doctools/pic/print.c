@@ -91,10 +91,12 @@ void print(void)
 				fillend(vis, fill);
 			move(ox, oy);
 			dotext(p);
+			/* clang may have found a bug here. Parentheses added
+			 * to "?:" operator. (CK) */
 			if (ishor(m))
-				move(ox + isright(m) ? x1 : -x1, oy);
+				move(ox + (isright(m) ? x1 : -x1), oy);
 			else
-				move(ox, oy + isup(m) ? x1 : -x1);
+				move(ox, oy + (isup(m) ? x1 : -x1));
 			break;
 		case ELLIPSE:
 			if (fill)
@@ -105,10 +107,11 @@ void print(void)
 				fillend(vis, fill);
 			move(ox, oy);
 			dotext(p);
+			/* Parentheses added (CK) */
 			if (ishor(m))
-				move(ox + isright(m) ? x1 : -x1, oy);
+				move(ox + (isright(m) ? x1 : -x1), oy);
 			else
-				move(ox, oy - isdown(m) ? y1 : -y1);
+				move(ox, oy - (isdown(m) ? y1 : -y1));
 			break;
 		case ARC:
 			if (fill) {
@@ -186,6 +189,17 @@ void print(void)
 	}
 }
 
+#define DOTLINE \
+	do { \
+		numdots = sqrt(dx*dx + dy*dy) / prevval + 0.5; \
+		if (numdots > 0) \
+			for (i = 0; i <= numdots; i++) { \
+				a = (double) i / (double) numdots; \
+				move(x0 + (a * dx), y0 + (a * dy)); \
+				dot(); \
+			} \
+	} while (0)
+
 void dotline(double x0, double y0, double x1, double y1, int ddtype, double ddval) /* dotted line */
 {
 	static double prevval = 0.05;	/* 20 per inch by default */
@@ -199,15 +213,13 @@ void dotline(double x0, double y0, double x1, double y1, int ddtype, double ddva
 	dx = x1 - x0;
 	dy = y1 - y0;
 	if (ddtype & DOTBIT) {
-		numdots = sqrt(dx*dx + dy*dy) / prevval + 0.5;
-		if (numdots > 0)
-			for (i = 0; i <= numdots; i++) {
-				a = (double) i / (double) numdots;
-				move(x0 + (a * dx), y0 + (a * dy));
-				dot();
-			}
+		DOTLINE;
 	} else if (ddtype & DASHBIT) {
 		double d, dashsize, spacesize;
+		printf(".ie n \\{\\\n");
+		DOTLINE;
+		printf(".\\}\n");
+		printf(".el \\{\\\n");
 		d = sqrt(dx*dx + dy*dy);
 		if (d <= 2 * prevval) {
 			line(x0, y0, x1, y1);
@@ -225,6 +237,7 @@ void dotline(double x0, double y0, double x1, double y1, int ddtype, double ddva
 			move(x0 + (a*dx), y0 + (a*dy));
 		}
 		line(x0 + (b * dx), y0 + (b * dy), x1, y1);
+		printf(".\\}\n");
 	}
 	prevval = 0.05;
 }

@@ -13,6 +13,8 @@
 extern void	FATAL(const char *, ...);
 extern void	WARNING(const char *, ...);
 
+#include "global.h"
+
 #define	dprintf	if(dbg)printf
 
 #define	String	01
@@ -140,9 +142,6 @@ extern	int	pointsize, ps_set;
 #define	Log10(x) errcheck(log10(x), "log")
 #define	Exp(x)	errcheck(exp(x), "exp")
 #define	Sqrt(x)	errcheck(sqrt(x), "sqrt")
-
-#define	min(x,y)	(((x) <= (y)) ? (x) : (y))
-#define	max(x,y)	(((x) >= (y)) ? (x) : (y))
 
 extern	void	yyerror(char *);
 extern void coord_x(Point);

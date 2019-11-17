@@ -1,20 +1,20 @@
 OBJ = t0.o t1.o t2.o t3.o t4.o t5.o t6.o t7.o t8.o t9.o tb.o tc.o te.o \
 	tf.o tg.o ti.o tm.o ts.o tt.o tu.o tv.o version.o
 
-FLAGS = -DMACDIR='"$(MACDIR)"'
+FLAGS = -DMACDIR='"$(MACDIR)"' -I../include
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(FLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
 all: tbl
 
 tbl: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o tbl
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(OBJ) $(LIBS) -o tbl
 
 install:
 	$(INSTALL) -c tbl $(ROOT)$(BINDIR)/tbl
 	$(STRIP) $(ROOT)$(BINDIR)/tbl
-	$(INSTALL) -c -m 644 tbl.1b $(ROOT)$(MANDIR)/man1b/tbl.1b
+	$(INSTALL) -c -m 644 tbl.1 $(ROOT)$(MANDIR)/man1/tbl.1
 
 clean:
 	rm -f $(OBJ) tbl core log *~

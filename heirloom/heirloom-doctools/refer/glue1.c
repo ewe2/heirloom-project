@@ -50,8 +50,8 @@ static int full = 1000;
 static int tags = 0;
 char *sinput, *soutput, *tagout;
 long indexdate = 0;
-int soutlen = 1000;
-int taglen = 1000;
+static int soutlen = 1000;
+static int taglen = 1000;
 
 void
 huntmain(int argc,char **argv)
@@ -137,13 +137,13 @@ huntmain(int argc,char **argv)
 		argc--; 
 		argv++;
 	}
-	strcpy (indexname, todir(argv[1]));
+	n_strcpy (indexname, todir(argv[1]), sizeof(indexname));
 # if D1
 	fprintf(stderr, "in huntmain indexname %s typeindex %d\n", indexname, typeindex);
 # endif
 	if (typeindex == 0 || strcmp (oldname, indexname) !=0)
 	{
-		strcpy (oldname, indexname);
+		n_strcpy (oldname, indexname, sizeof(oldname));
 		unopen(fa); 
 		unopen(fb); 
 		unopen(fc);
@@ -195,10 +195,12 @@ huntmain(int argc,char **argv)
 			fprintf(stderr,"Read pointer files\n");
 # endif
 			if (master.a == NULL)
+			{
 				if (iflong)
 					master.b = zalloc(lmaster, sizeof(long));
 				else
 					master.a = zalloc(lmaster, sizeof(int));
+			}
 			if (master.a == NULL)
 				err("no space for answer list", 0);
 		}
@@ -261,8 +263,8 @@ huntmain(int argc,char **argv)
 		grepquery[0]=0;
 		for(k=0; k<nitem; k++)
 		{
-			strcat(grepquery, " ");
-			strcat(grepquery, qitem[k]);
+			n_strcat(grepquery, " ", sizeof(grepquery));
+			n_strcat(grepquery, qitem[k], sizeof(grepquery));
 		}
 		for(fgp=fgnames; fgp<fgnamp; fgp++)
 		{
@@ -292,7 +294,7 @@ todir(char *t)
 	*s++ = 0;
 	t = (*t ? t : "/");
 	chdir (t);
-	strcpy (usedir,t);
+	n_strcpy (usedir,t,sizeof(usedir));
 	return(s);
 }
 

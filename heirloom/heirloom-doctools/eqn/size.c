@@ -21,8 +21,15 @@
  * Sccsid @(#)size.c	1.5 (gritter) 10/19/06
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 # include "e.h"
 # include <stdlib.h>
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 setsize(char *p)	/* set size as found in p */
@@ -41,18 +48,18 @@ size(float p1, int p2) {
 		/* old size in p1, new in ps */
 	float effps, effp1;
 
-	yyval = p2;
+	yyval.token = p2;
 #ifndef	NEQN
 	if(dbg)printf(".\tb:sb: S%d <- \\s%s S%d \\s%s; b=%g, h=%g\n", 
-		yyval, tsize(ps), p2, tsize(p1), ebase[yyval], eht[yyval]);
+		yyval.token, tsize(ps), p2, tsize(p1), ebase[yyval.token], eht[yyval.token]);
 #else	/* NEQN */
 	if(dbg)printf(".\tb:sb: S%d <- \\s%s S%d \\s%s; b=%d, h=%d\n", 
-		yyval, tsize(ps), p2, tsize(p1), ebase[yyval], eht[yyval]);
+		yyval.token, tsize(ps), p2, tsize(p1), ebase[yyval.token], eht[yyval.token]);
 #endif	/* NEQN */
 	effps = EFFPS(ps);
 	effp1 = EFFPS(p1);
 	printf(".ds %d \\s%s\\*(%d\\s%s\n", 
-		yyval, tsize(effps), p2, tsize(effp1));
+		yyval.token, tsize(effps), p2, tsize(effp1));
 	ps = p1;
 }
 
@@ -67,7 +74,7 @@ globsize(void) {
 		gsize -= atof(temp+1);
 	else
 		gsize = atof(temp);
-	yyval = eqnreg = 0;
+	yyval.token = eqnreg = 0;
 	setps(gsize);
 	ps = gsize;
 	if (gsize >= 12)	/* sub and sup size change */
@@ -88,13 +95,13 @@ tsize(float s)
 	t = (t + 1) % 5;
 	if ((i = s) == s) {
 		if (i < 40)
-			sprintf(b[t], "%d", i);
+			snprintf(b[t], sizeof(b[t]), "%d", i);
 		else if (i < 100)
-			sprintf(b[t], "(%d", i);
+			snprintf(b[t], sizeof(b[t]), "(%d", i);
 		else
-			sprintf(b[t], "[%d]", i);
+			snprintf(b[t], sizeof(b[t]), "[%d]", i);
 	} else {
-		sprintf(b[t], "[%g]", s);
+		snprintf(b[t], sizeof(b[t]), "[%g]", s);
 	}
 	return b[t];
 }

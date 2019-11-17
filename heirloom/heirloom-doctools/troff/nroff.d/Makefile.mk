@@ -1,33 +1,41 @@
 VPATH=..
 
 LIBHNJ = ../libhnj
+BST = ../../stuff/bst
 
 OBJ = n10.o n6.o hytab.o n1.o n2.o n3.o n4.o n5.o \
 	n7.o n8.o n9.o ni.o nii.o suftab.o \
-	version.o
+	version.o draw.o $(BST)/bst.o
 
-FLAGS = -DNROFF -DUSG $(EUC) -I. -I.. -DMACDIR='"$(MACDIR)"' \
+FLAGS = -DNROFF -DUSG $(EUC) -I. -I.. -I../../include -DMACDIR='"$(MACDIR)"' \
 	-DFNTDIR='"$(FNTDIR)"' -DTABDIR='"$(TABDIR)"' -DHYPDIR='"$(HYPDIR)"' \
-	-DSHELL='"$(SHELL)"'
+	-DSHELL='"$(SHELL)"' -DRELEASE='"$(RELEASE)"' $(DEFINES) \
+	-I$(BST)
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(CPPFLAGS) $(FLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
-all: nroff
+all: nroff nroff.1
 
 nroff: $(OBJ) $(LIBHNJ)/libhnj.a
-	$(CC) $(LDFLAGS) $(OBJ) -L$(LIBHNJ) -lhnj $(LIBS) -o nroff
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(OBJ) -L$(LIBHNJ) -lhnj $(LIBS) -o nroff
 
 install:
 	$(INSTALL) -c nroff $(ROOT)$(BINDIR)/nroff
 	$(STRIP) $(ROOT)$(BINDIR)/nroff
-	$(INSTALL) -c -m 644 nroff.1b $(ROOT)$(MANDIR)/man1b/nroff.1b
+	$(INSTALL) -c -m 644 nroff.1 $(ROOT)$(MANDIR)/man1/nroff.1
 
 clean:
-	rm -f $(OBJ) nroff core log *~
+	rm -f $(OBJ) nroff core log *~ nroff.1
 
 mrproper: clean
 
+nroff.1: nroff.1.in
+	sed -e 's"/usr/ucblib/doctools/tmac/"$(ROOT)$(MACDIR)/"' \
+	    -e 's"/usr/ucblib/doctools/nterm/"$(ROOT)$(TABDIR)/"' \
+	    nroff.1.in > $@
+
+draw.o: ../tdef.h ../ext.h
 n10.o: n10.c ../tdef.h ../ext.h tw.h pt.h
 n6.o: n6.c ../tdef.h tw.h pt.h ../ext.h
 hytab.o: ../hytab.c

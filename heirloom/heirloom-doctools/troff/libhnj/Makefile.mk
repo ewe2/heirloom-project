@@ -1,18 +1,17 @@
-FLAGS =
+FLAGS = -I../../include
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(CPPFLAGS) $(FLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
 OBJ = hnjalloc.o hyphen.o
 
 all: libhnj.a test
 
 libhnj.a: $(OBJ)
-	$(AR) -rv libhnj.a $(OBJ)
-	$(RANLIB) $@
+	$(AR) crs $@ $(OBJ)
 
 test: test.o libhnj.a
-	$(CC) $(LDFLAGS) test.o -L. -lhnj -o test
+	$(CC) $(_CFLAGS) $(_LDFLAGS) test.o -L. -lhnj -o test
 
 install:
 

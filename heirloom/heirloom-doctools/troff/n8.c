@@ -46,6 +46,7 @@
  * contributors.
  */
 
+#include	<stddef.h>
 #include	<stdio.h>
 #ifdef	EUC
 #include	<wctype.h>
@@ -66,12 +67,12 @@
  * hyphenation
  */
 
-int	*hbuf;
-int	NHEX;
-int	*nexth;
-tchar	*hyend;
+static int	*hbuf;
+static int	NHEX;
+static int	*nexth;
+static tchar	*hyend;
 #define THRESH 160 /*digram goodness threshold*/
-int	thresh = THRESH;
+static int	thresh = THRESH;
 
 static	void		hyphenhnj(void);
 
@@ -124,13 +125,13 @@ hyphen(tchar *wp)
 			if (cbits(*i) == '-' || cbits(*i) == EMDASH ||
 					i == _wdend) {
 				while (wdstart <= i && (punct(*wdstart) ||
-						cbits(*wdstart) >= '0' &&
-						cbits(*wdstart) <= '9'))
+						(cbits(*wdstart) >= '0' &&
+						 cbits(*wdstart) <= '9')))
 					wdstart++;
 				for (wdend = wdstart; wdend <= i; wdend++) {
 					if (!alph(*wdend) ||
-							cbits(*wdend) >= '0' &&
-							cbits(*wdend) <= '9')
+							(cbits(*wdend) >= '0' &&
+							 cbits(*wdend) <= '9'))
 						break;
 				}
 				hyend = --wdend;
@@ -210,8 +211,8 @@ alph(tchar j)
 		return hyext ? iswalnum(u) : iswalpha(u);
 	} else
 #endif	/* EUC */
-	if (!ismot(j) && i >= 'a' && i <= 'z' || i >= 'A' && i <= 'Z' ||
-			hyext && i >= '0' && i <= '9')
+	if ((!ismot(j) && i >= 'a' && i <= 'z') || (i >= 'A' && i <= 'Z') ||
+			(hyext && i >= '0' && i <= '9'))
 		return(1);
 	else
 		return(0);
@@ -225,7 +226,7 @@ caseht(void)
 	if (skip(0))
 		return;
 	noscale++;
-	thresh = atoi();
+	thresh = hatoi();
 	noscale = 0;
 }
 
@@ -526,6 +527,7 @@ casehylang(void)
 {
 	int	c, i = 0, sz = 0;
 	char	*path = NULL;
+	size_t	l;
 
 	dicthnj = NULL;
 	free(hylang);
@@ -544,11 +546,11 @@ casehylang(void)
 		return;
 	}
 	if (strchr(hylang, '/') == NULL) {
-		path = malloc(strlen(hylang) + strlen(HYPDIR) + 12);
-		sprintf(path, "%s/hyph_%s.dic", HYPDIR, hylang);
+		l = strlen(hylang) + strlen(HYPDIR) + 12;
+		path = malloc(l);
+		snprintf(path, l, "%s/hyph_%s.dic", HYPDIR, hylang);
 	} else {
-		path = malloc(strlen(hylang) + 1);
-		strcpy(path, hylang);
+		path = strdup(hylang);
 	}
 	if ((dicthnj = hnj_hyphen_load(path)) == NULL) {
 		errprint("Can't load %s", path);
@@ -572,16 +574,16 @@ addc(int m, char **cp, tchar **wp, int **wpp, int distance)
 		*(*cp)++ = m;
 		*(*wpp)++ = distance;
 	} else if (m >= 0x80 && m <= 0x7ff) {
-		*(*cp)++ = m >> 6 & 037 | 0300;
+		*(*cp)++ = (m >> 6 & 037) | 0300;
 		*(*wpp)++ = distance;
-		*(*cp)++ = m & 077 | 0200;
+		*(*cp)++ = (m & 077) | 0200;
 		*(*wpp)++ = -1000;
 	} else if (m >= 0x800 && m <= 0xffff) {
-		*(*cp)++ = m >> 12 & 017 | 0340;
+		*(*cp)++ = (m >> 12 & 017) | 0340;
 		*(*wpp)++ = distance;
-		*(*cp)++ = m >> 6 & 077 | 0200;
+		*(*cp)++ = (m >> 6 & 077) | 0200;
 		*(*wpp)++ = -1000;
-		*(*cp)++ = m & 077 | 0200;
+		*(*cp)++ = (m & 077) | 0200;
 		*(*wpp)++ = -1000;
 	} else
 		return 0;
@@ -594,7 +596,7 @@ hyphenhnj(void)
 	tchar	*wp;
 	char	*cb, *cp, *hb;
 	int	*wpos, *wpp;
-	int	f, i, j, k, m;
+	int	i, j, k;
 
 	i = 12 * (wdend - wdstart) + 1;
 	cb = malloc(i * sizeof *cb);
@@ -603,9 +605,9 @@ hyphenhnj(void)
 	cp = cb;
 	wpp = wpos;
 	for (wp = wdstart; wp <= wdend; wp++) {
-		m = cbits(*wp);
-		f = fbits(*wp);
 #ifndef	NROFF
+		int m = cbits(*wp);
+		int f = fbits(*wp);
 		if (islig(*wp) && lgrevtab && lgrevtab[f] && lgrevtab[f][m]) {
 			for (i = 0; lgrevtab[f][m][i]; i++) {
 				if (addc(lgrevtab[f][m][i], &cp, &wp, &wpp,
@@ -628,7 +630,7 @@ hyphenhnj(void)
 	for (i = 0; i < j; i++) {
 		if (wpos[i+1] >= 0)
 			k = wpos[i+1];
-		if (hb[i] - '0' & 1 && wpos[i+1] >= -3) {
+		if ((hb[i] - '0') & 1 && wpos[i+1] >= -3) {
 			if (wpos[i+1] >= 0)
 				*hyp = &wdstart[wpos[i+1]];
 			else {

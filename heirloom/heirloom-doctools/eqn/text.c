@@ -21,31 +21,37 @@
  * Sccsid @(#)text.c	1.8 (gritter) 1/13/08
  */
 
-# include "e.h"
-# include "e.def"
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
 
-int	csp;
-int	psp;
+#include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
+
+static int	csp;
+static int	psp;
 #define	CSSIZE	400
-char	cs[420];
+static char	cs[420];
 
-int	lf, rf;	/* temporary spots for left and right fonts */
+static int	lf, rf;	/* temporary spots for left and right fonts */
 
 void
 text(int t,char *p1) {
 	int c;
-	char *p;
+	const char *p;
 	tbl *tp;
 	extern tbl *restbl;
 
-	yyval = oalloc();
-	ebase[yyval] = 0;
+	yyval.token = oalloc();
+	ebase[yyval.token] = 0;
 #ifndef NEQN
-	eht[yyval] = VERT(EM(1.0, EFFPS(ps)));	/* ht in machine units */
+	eht[yyval.token] = VERT(EM(1.0, EFFPS(ps)));	/* ht in machine units */
 #else /* NEQN */
-	eht[yyval] = VERT(2);	/* 2 half-spaces */
+	eht[yyval.token] = VERT(2);	/* 2 half-spaces */
 #endif /* NEQN */
-	lfont[yyval] = rfont[yyval] = ROM;
+	lfont[yyval.token] = rfont[yyval.token] = ROM;
 	if (t == QTEXT)
 		p = p1;
 	else if ( t == SPACE )
@@ -67,17 +73,17 @@ text(int t,char *p1) {
 		}
 		cs[csp] = '\0';
 		p = cs;
-		lfont[yyval] = lf;
-		rfont[yyval] = rf;
+		lfont[yyval.token] = lf;
+		rfont[yyval.token] = rf;
 	}
 #ifndef	NEQN
 	if(dbg)printf(".\t%dtext: S%d <- %s; b=%g,h=%g,lf=%c,rf=%c\n",
-		t, yyval, p, ebase[yyval], eht[yyval], lfont[yyval], rfont[yyval]);
+		t, yyval.token, p, ebase[yyval.token], eht[yyval.token], lfont[yyval.token], rfont[yyval.token]);
 #else	/* NEQN */
 	if(dbg)printf(".\t%dtext: S%d <- %s; b=%d,h=%d,lf=%c,rf=%c\n",
-		t, yyval, p, ebase[yyval], eht[yyval], lfont[yyval], rfont[yyval]);
+		t, yyval.token, p, ebase[yyval.token], eht[yyval.token], lfont[yyval.token], rfont[yyval.token]);
 #endif	/* NEQN */
-	printf(".ds %d \"%s\n", yyval, p);
+	printf(".ds %d \"%s\n", yyval.token, p);
 }
 
 int
@@ -162,7 +168,7 @@ trans(int c,char *p1) {
 		if (c=='*' && cs[csp-1] == '(') {
 			cs[csp++] = p1[psp++];
 			cs[csp++] = p1[psp++];
-		} else if (c == '[' || c == '*' && cs[csp-1] == '[') {
+		} else if (c == '[' || (c == '*' && cs[csp-1] == '[')) {
 			do
 				cs[csp++] = p1[psp++];
 			while (p1[psp-1] != ' ' && p1[psp-1] != '\t' &&

@@ -1,42 +1,48 @@
 LIBHNJ = ../libhnj
+BST = ../../stuff/bst
 VPATH=..
 OBJ = t10.o t6.o hytab.o n1.o n2.o n3.o n4.o n5.o \
 	n7.o n8.o n9.o ni.o nii.o suftab.o makedev.o afm.o otf.o unimap.o \
-	version.o
+	version.o fontmap.o $(BST)/bst.o
 
-FLAGS = -DUSG $(EUC) -I. -I.. -DMACDIR='"$(MACDIR)"' \
+FLAGS = -DUSG $(EUC) -I. -I.. -I../../include -DMACDIR='"$(MACDIR)"' \
 	-DFNTDIR='"$(FNTDIR)"' -DTABDIR='"$(TABDIR)"' -DHYPDIR='"$(HYPDIR)"' \
-	-DSHELL='"$(SHELL)"'
+	-DSHELL='"$(SHELL)"' -DRELEASE='"$(RELEASE)"' $(DEFINES) -I$(BST)
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(CPPFLAGS) $(FLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
-all: troff ta otfdump
+all: troff ta otfdump troff.1
 
 troff: $(OBJ) $(LIBHNJ)/libhnj.a
-	$(CC) $(LDFLAGS) $(OBJ) -L$(LIBHNJ) -lhnj $(LIBS) -o troff
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(OBJ) -L$(LIBHNJ) -lhnj $(LIBS) -o troff
 
 ta: draw.o ta.o
-	$(CC) $(LDFLAGS) draw.o ta.o $(LIBS) -lm -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) draw.o ta.o $(LIBS) -lm -o $@
 
 otfdump: otfdump.o otfdump_vs.o
-	$(CC) $(LDFLAGS) otfdump.o otfdump_vs.o $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) otfdump.o otfdump_vs.o $(LIBS) -o $@
 
 install:
 	$(INSTALL) -c troff $(ROOT)$(BINDIR)/troff
 	$(STRIP) $(ROOT)$(BINDIR)/troff
 	$(INSTALL) -c ta $(ROOT)$(BINDIR)/ta
 	$(STRIP) $(ROOT)$(BINDIR)/ta
-	$(INSTALL) -c otfdump $(ROOT)$(BINDIR)/otfdump
-	$(STRIP) $(ROOT)$(BINDIR)/otfdump
-	$(INSTALL) -c -m 644 troff.1b $(ROOT)$(MANDIR)/man1b/troff.1b
-	$(INSTALL) -c -m 644 otfdump.1 $(ROOT)$(MANDIR)/man1/otfdump.1
+	$(INSTALL) -c otfdump $(ROOT)$(BINDIR)/otf_info
+	$(STRIP) $(ROOT)$(BINDIR)/otf_info
+	$(INSTALL) -c -m 644 troff.1 $(ROOT)$(MANDIR)/man1/troff.1
+	$(INSTALL) -c -m 644 otfdump.1 $(ROOT)$(MANDIR)/man1/otf_info.1
 
 clean:
 	rm -f $(OBJ) draw.o ta.o troff ta otfdump otfdump.o otfdump_vs.o \
-		core log *~
+		core log *~ troff.1
 
 mrproper: clean
+
+troff.1: troff.1.in
+	sed -e 's"/usr/ucblib/doctools/font/"$(ROOT)$(FNTDIR)/"' \
+	    -e 's"/usr/ucblib/doctools/tmac/"$(ROOT)$(MACDIR)/"' \
+	    troff.1.in > $@
 
 draw.o: draw.c
 makedev.o: makedev.c dev.h
@@ -61,4 +67,5 @@ version.o: ../version.c
 otfdump_vs.o: ../version.c
 afm.o: dev.h afm.h
 otf.o: dev.h afm.h unimap.h
-otfdump.o: afm.h afm.c otf.c otfdump.c dpost.d/getopt.c dev.h
+otfdump.o: afm.h afm.c otf.c otfdump.c dev.h
+fontmap.o: fontmap.h

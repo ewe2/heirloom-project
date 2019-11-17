@@ -17,6 +17,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+int STRNCMP(register char *s1, register char *s2, register int len);
+char * expmatch ( register char *s, register char *re, register char *mstring);
+char *convexp( char *re);
+
 typedef int	boolean;
 #define TRUE	1
 #define FALSE	0
@@ -30,7 +34,7 @@ static void expconv(void);
 
 #define isidchr(c)	\
 		(isalnum(c) || ((c) != NIL && strchr(l_idchars, (c)) != NIL))
-#define makelower(c)	(isupper((c)) ? tolower((c)) : (c))
+#define makelower(c)	(isupper((int)(c)) ? tolower((int)(c)) : (c))
 
 /*  STRNCMP -	like strncmp except that we convert the
  *	 	first string to lower case before comparing
@@ -434,7 +438,7 @@ expmatch (
 			/* not optional and we still matched */
 			return (NIL);
 		    }
-		    if (!isidchr(*s1))
+		    if (!isidchr((int)*s1))
 			return (NIL);
 		    if (*s1 == '\\')
 			escaped = escaped ? FALSE : TRUE;

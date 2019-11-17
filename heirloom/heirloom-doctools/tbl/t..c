@@ -23,13 +23,10 @@
 
 /* t..c : external declarations */
 
-# include "stdio.h"
-# include "ctype.h"
-
-# if defined (__GLIBC__) && defined (_IO_getc_unlocked)
-# undef getc
-# define getc(f) _IO_getc_unlocked(f)
-# endif
+# include <stdio.h>
+# include <ctype.h>
+# include <inttypes.h>
+# include "global.h"
 
 # define MAXCHS 2000
 # define MAXSTR 1024
@@ -47,12 +44,14 @@ extern char ***font;
 extern char ***csize;
 extern char ***vsize;
 extern char **cll;
+extern int *xcol;
 extern int *stynum;
 extern int F1, F2;
 extern int **lefline;
 extern int *fullbot;
 extern char **instead;
 extern int expflg;
+extern int xcolflg;
 extern int ctrflg;
 extern int evenflg;
 extern int *evenup;
@@ -77,9 +76,10 @@ extern int *sep;
 extern int *used, *lused, *rused;
 extern int *linestop;
 extern char *leftover;
-extern char *last, *ifile;
+extern char *last;
+extern const char *ifile;
 extern int *topat;
-extern int texname;
+extern intptr_t texname;
 extern int texct;
 extern int texct2;
 extern char texstr[];
@@ -87,6 +87,9 @@ extern int linstart;
 extern int nokeep;
 
 extern const char *progname;
+extern int utf8;
+extern int tlp;
+extern int nflm;
 
 extern FILE *tabin, *tabout;
 # define CRIGHT 80
@@ -114,16 +117,16 @@ int swapin(void);
 /* t2.c */
 void tableput(void);
 /* t3.c */
-void getcomm(void);
+int getcomm(void);
 void backrest(char *);
 /* t4.c */
-void getspec(void);
-void readspec(void);
+int getspec(void);
+int readspec(void);
 /* t5.c */
-void gettbl(void);
+int gettbl(void);
 int nodata(int);
 int oneh(int);
-void permute(void);
+int permute(void);
 int vspand(int, int, int);
 int vspen(char *);
 /* t6.c */
@@ -131,7 +134,7 @@ void maktab(void);
 void wide(char *, char *, char *);
 int filler(char *);
 /* t7.c */
-void runout(void);
+int runout(void);
 void runtabs(int, int);
 int ifline(char *);
 void need(void);
@@ -140,23 +143,23 @@ void deftail(void);
 void putline(int, int);
 void puttext(char *, char *, char *);
 void funnies(int, int);
-void putfont(char *);
-void putsize(char *);
+void putfont(const char *);
+void putsize(const char *);
 /* t9.c */
-void yetmore(void);
+int yetmore(void);
 int domore(char *);
 /* tb.c */
 void checkuse(void);
 int real(char *);
 char *chspace(void);
 void updspace(char *, char *, int);
-int *alocv(int);
+struct colstr *alocv(int);
 void release(void);
 /* tc.c */
-void choochar(void);
+int choochar(void);
 int point(int);
 /* te.c */
-void error(char *);
+int error(const char *);
 char *errmsg(int);
 char *gets1(char **, char **, size_t *);
 void un1getc(int);
@@ -173,9 +176,9 @@ void warnon(void);
 void warnoff(void);
 void svgraph(void);
 /* tg.c */
-int get_text(char *, int, int, char *, char *);
+char *get_text(char *, int, int, char *, char *);
 void untext(void);
-char *nreg(char *, const char *, int);
+char *nreg(char *, size_t, const char *, int);
 /* ti.c */
 int interv(int, int);
 int interh(int, int);
@@ -184,16 +187,11 @@ int up1(int);
 char *maknew(char *);
 int ineqn(char *, char *);
 /* ts.c */
-int match(char *, char *);
-int prefix(char *, char *);
+int cprefix(const char *, const char *);
 int letter(int);
-int numb(char *);
-int digit(int);
-int max(int, int);
 void tcopy(char *, char *);
 /* tt.c */
 int ctype(int, int);
-int min(int, int);
 int fspan(int, int);
 int lspan(int, int);
 int ctspan(int, int);

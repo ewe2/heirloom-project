@@ -21,19 +21,25 @@
  * Sccsid @(#)lex.c	1.7 (gritter) 11/21/07
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 #include "e.h"
-#include "e.def"
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 #define	SSIZE	400
-char	token[SSIZE];
-int	sp;
+static char	token[SSIZE];
+static int	sp;
 #define	putbak(c)	*ip++ = c;
 #define	PUSHBACK	300	/* maximum pushback characters */
-char	ibuf[PUSHBACK+SSIZE];	/* pushback buffer for definitions, etc. */
-char	*ip	= ibuf;
+static char	ibuf[PUSHBACK+SSIZE];	/* pushback buffer for definitions, etc. */
+static char	*ip	= ibuf;
 
 int
 gtc(void) {
@@ -71,9 +77,9 @@ openinfile(void)
 }
 
 void
-pbstr(register char *str)
+pbstr(register const char *str)
 {
-	register char *p;
+	register const char *p;
 
 	p = str;
 	while (*p++);
@@ -93,7 +99,7 @@ yylex(void) {
   beg:
 	while ((c=gtc())==' ' || c=='\n')
 		;
-	yylval=c;
+	yylval.token = c;
 	switch(c) {
 
 	case EOF:
@@ -118,7 +124,7 @@ yylex(void) {
 				error(FATAL, "quoted string %.20s... too long", token);
 		}
 		token[sp]='\0';
-		yylval = (int) &token[0];
+		yylval.str = &token[0];
 		if (c == '\n')
 			error(!FATAL, "missing \" in %.20s", token);
 		return(QTEXT);
@@ -127,7 +133,7 @@ yylex(void) {
 		return(EOF);
 
 	putbak(c);
-	getstr(token, SSIZE);
+	if (getstr(token, SSIZE)) return EOF;
 	if (dbg)printf(".\tlex token = |%s|\n", token);
 	if ((tp = lookup(deftbl, token, NULL)) != NULL) {
 		putbak(' ');
@@ -158,32 +164,60 @@ yylex(void) {
 	goto beg;
 }
 
-void
+/* returns: 1 if ".{WS}+EN" found, 0 else */
+int
 getstr(char *s, register int n) {
 	register int c;
 	register char *p;
+	enum { INI = 0, OTH, SP, C1, C2, PB } st = INI;
 
 	p = s;
 	while ((c = gtc()) == ' ' || c == '\n')
 		;
 	if (c == EOF) {
 		*s = 0;
-		return;
+		return 0;
 	}
-	while (c != ' ' && c != '\t' && c != '\n' && c != '{' && c != '}'
-	  && c != '"' && c != '~' && c != '^' && c != righteq) {
+	while (((c != ' ' && c != '\t') || st == SP) && c != '\n' && c != '{'
+	    && c != '}' && c != '"' && c != '~' && c != '^' && c != righteq) {
 		if (c == '\\')
 			if ((c = gtc()) != '"')
 				*p++ = '\\';
+		switch (st) {
+		case INI:
+			st = c == '.' ? SP : OTH;
+			break;
+		case SP:
+			if (c == 'E') st = C1;
+			else if (c != ' ' && c != '\t') st = PB;
+			break;
+		case C1:
+			st = c == 'N' ? C2 : PB;
+			break;
+		case C2:
+			st = PB;
+			break;
+		default: ;
+		}
 		*p++ = c;
-		if (--n <= 0)
-			error(FATAL, "token %.20s... too long", s);
-		c = gtc();
+		if (st == PB)
+			goto TF;
+		else {
+			if (--n <= 0)
+				error(FATAL, "token %.20s... too long", s);
+			c = gtc();
+		}
 	}
 	if (c=='{' || c=='}' || c=='"' || c=='~' || c=='^' || c=='\t' || c==righteq)
 		putbak(c);
+TF:
+	if (st == SP || st == C1 || st == PB) {
+		while (--p != s) putbak(*p);
+		p++;
+	}
 	*p = '\0';
-	yylval = (intptr_t) s;
+	yylval.str = s;
+	return st == C2;
 }
 
 int
@@ -247,11 +281,13 @@ char *
 strsave(char *s)
 {
 	register char *q;
+	size_t l;
 
-	q = malloc(strlen(s)+1);
+	l = strlen(s)+1;
+	q = malloc(l);
 	if (q == NULL)
 		error(FATAL, "out of space in strsave on %s", s);
-	strcpy(q, s);
+	n_strcpy(q, s, l);
 	return(q);
 }
 
@@ -262,8 +298,8 @@ include(void) {
 
 void
 delim(void) {
-	yyval = eqnreg = 0;
-	if (cstr(token, 0, SSIZE) || token[0] & 0200 || token[1] & 0200)
+	yyval.token = eqnreg = 0;
+	if (cstr(token, 0, SSIZE))
 		error(FATAL, "Bizarre delimiters at %.20s", token);
 	lefteq = token[0];
 	righteq = token[1];

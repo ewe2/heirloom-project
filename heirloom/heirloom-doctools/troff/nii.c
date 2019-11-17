@@ -34,6 +34,11 @@
  * Portions Copyright (c) 2005 Gunnar Ritter, Freiburg i. Br., Germany
  *
  * Sccsid @(#)nii.c	1.48 (gritter) 3/5/07
+ *
+ */
+
+/*
+ * Portions Copyright (c) 2017 Roy Fisher
  */
 
 /*
@@ -71,6 +76,8 @@ int	cs;
 int	ccs;
 int	bd;
 char	*fchartab;
+#else
+long	lvmot;
 #endif
 
 int	stdi;
@@ -159,7 +166,6 @@ int	lastkern;
 int	lasttrack;
 int	defaultpl;
 int	NCHARS;
-int	NIF;
 int	NDI;
 int	spreadwarn;
 int	spreadlimit;
@@ -171,6 +177,9 @@ int	tailflg;
 int	minflg;
 int	minspc;
 int	blmac;
+int	lsmac;
+int	glss;
+int	lsn;
 int	rawwidth;
 int	*olt;
 int	nolt;
@@ -186,3 +195,7 @@ int	dl;
 int	padj;
 int	defcf;
 int	donep;
+int	gemu;
+int	argdelim;
+int	chomp;
+int	chompend;

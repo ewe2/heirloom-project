@@ -25,6 +25,7 @@
 #include <locale.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include "refer..c"
 
 static void signals(void);
@@ -111,7 +112,7 @@ main(int argc,char **argv)		/* process command-line arguments */
 	else if (nodeflt == 0)
 		*search++ = REFDIR "/papers/Ind";
 	if (sort && !labels) {
-		sprintf(ofile, "/tmp/rj%db", (int)getpid());
+		snprintf(ofile, NTFILE, "/tmp/rj%db", (int)getpid());
 		ftemp = fopen(ofile, "w");
 		if (ftemp == NULL) {
 			fprintf(stderr, "Can't open scratch file\n");
@@ -119,7 +120,7 @@ main(int argc,char **argv)		/* process command-line arguments */
 		}
 	}
 	if (endpush) {
-		sprintf(tfile, "/tmp/rj%da", (int)getpid());
+		snprintf(tfile, NTFILE, "/tmp/rj%da", (int)getpid());
 		fo = fopen(tfile, "w");
 		if (fo == NULL) {
 			fo = ftemp;
@@ -140,13 +141,13 @@ main(int argc,char **argv)		/* process command-line arguments */
 				continue;
 			}
 		}
-		while (input(line)) {
+		while (input(line, sizeof(line))) {
 			Iline++;
 			if (biblio && *line == '\n')
 				doref(line);
 			else if (biblio && Iline == 1 && *line == '%')
 				doref(line);
-			else if (!prefix(".[", line))
+			else if (!prefix(line, ".["))
 				output(line);
 			else
 				doref(line);
@@ -173,7 +174,7 @@ signals(void)
 	signal(SIGTERM, intr);
 }
 
-static void intr(int unused)
+static void intr(int unused __unused)
 {
 	signal(SIGINT, SIG_IGN);
 	cleanup();

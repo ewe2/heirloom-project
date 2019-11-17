@@ -6,7 +6,7 @@ FONTS = AB AI AR AX BI CB CI CO CW CX GR HB HI HX Hb Hi Hr Hx \
 FLAGS = -I. -I.. -DFNTDIR='"$(FNTDIR)"'
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(CPPFLAGS) $(FLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
 all:
 
@@ -14,8 +14,8 @@ install: all
 	test -d $(ROOT)$(FNTDIR) || mkdir -p $(ROOT)$(FNTDIR)
 	test -d $(ROOT)$(FNTDIR)/devpost/charlib || \
 		mkdir -p $(ROOT)$(FNTDIR)/devpost/charlib
-	cd devpost && for i in ? ?? ?.name ??.name DESC*; \
-	do \
+	cd devpost && for i in ? ?? H?? H??? ?.name ??.name H??.name \
+	    H???.name DESC* FONTMAP; do \
 		$(INSTALL) -c -m 644 $$i $(ROOT)$(FNTDIR)/devpost/ || exit; \
 	done
 	cd $(ROOT)$(FNTDIR)/devpost && \
@@ -24,13 +24,14 @@ install: all
 			rm -f $$i; ln -s H $$i || exit; \
 		done && \
 		rm -f GI; ln -s HI GI
-	cd devpost/charlib && for i in ?? ??.map BRACKETS_NOTE README OLD_LH*; \
+	cd devpost/charlib && for i in ?? ??.map BRACKETS_NOTE README OLD_LH* \
+	    LH_uc; \
 	do \
 		$(INSTALL) -c -m 644 $$i $(ROOT)$(FNTDIR)/devpost/charlib \
 			|| exit; \
 	done
 	test -d $(ROOT)$(FNTDIR)/devps || mkdir -p $(ROOT)$(FNTDIR)/devps
-	cd devps && for i in ? ?.afm ?? ??.afm DESC MustRead.html; \
+	cd devps && for i in ? ?.afm ?? ??.afm DESC MustRead.html FONTMAP; \
 	do \
 		$(INSTALL) -c -m 644 $$i $(ROOT)$(FNTDIR)/devps/ || exit; \
 	done

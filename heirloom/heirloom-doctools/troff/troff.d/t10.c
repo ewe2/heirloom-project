@@ -37,6 +37,10 @@
  */
 
 /*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
+/*
  * University Copyright- Copyright (c) 1982, 1986, 1988
  * The Regents of the University of California
  * All Rights Reserved
@@ -61,6 +65,7 @@
 #include "pt.h"
 #include "troff.h"
 #include "unimap.h"
+#include "fontmap.h"
 /*
  * troff10.c
  * 
@@ -84,7 +89,7 @@ int	Hor;
 int	Vert;
 int	Unitwidth;
 int	nfonts;
-int	nsizes;
+static int	nsizes;
 int	nchtab;
 int	lettrack;
 float	horscale;
@@ -129,6 +134,7 @@ static void	ptlink(int);
 static void	ptulink(int);
 static void	ptyon(int);
 static void	ptchar(int, int);
+static void	pnc(int, struct afmtab *);
 
 void
 growfonts(int n)
@@ -185,7 +191,11 @@ ptinit(void)
 {
 	int	i, nw;
 	char	*filebase, *p, *ap, *descp;
+	char	*p2;
+	size_t	l;
+	size_t	l2;
 
+	if (!strcmp(devname, "html")) html = 1;
 	growfonts(NFONT+1);
 	memcpy(bdtab, initbdtab,
 		max((NFONT+1) * sizeof *bdtab, sizeof initbdtab));
@@ -194,11 +204,19 @@ ptinit(void)
 	 * read in resolution, size info, font info, etc.
 	 * and set params
 	 */
-	p = malloc(strlen(termtab) + strlen(devname) + 10);
-	termtab = strcpy(p, termtab);
-	strcat(termtab, "/dev");
-	strcat(termtab, devname);
-	strcat(termtab, "/DESC");	/* makes "..../devXXX/DESC" */
+	l = strlen(termtab) + strlen(devname) + 10;
+	l2 = l + 3;
+	p = malloc(l);
+	p2 = malloc(l2);
+	n_strcpy(p, termtab, l);
+	termtab = p;
+	n_strcat(termtab, "/dev", l);
+	n_strcat(termtab, devname, l);
+	n_strcpy(p2, termtab, l2);
+	n_strcat(p2, "/FONTMAP", l2);
+	rdftmap(p2);
+	free(p2);
+	n_strcat(termtab, "/DESC", l);	/* makes "..../devXXX/DESC" */
 	if ((descp = readdesc(termtab)) == NULL)
 		done3(1);
 	memcpy(&dev, descp, sizeof dev);
@@ -214,7 +232,7 @@ ptinit(void)
 			termtab);
 		done3(1);
 	}
-	filebase = setbrk(dev.filesize + 2*EXTRAFONT);	/* enough room for whole file */
+	filebase = malloc(dev.filesize + 3*EXTRAFONT);	/* enough room for whole file */
 	memcpy(filebase, &descp[sizeof dev], dev.filesize); /* all at once */
 	free(descp);
 	pstab = (int *) filebase;
@@ -223,6 +241,7 @@ ptinit(void)
 	chtab = (short *)(pstab + nsizes + 1);
 	chname = (char *) (chtab + dev.nchtab);
 	p = chname + dev.lchname;
+	specnames();	/* install names like "hyphen", etc. */
 	for (i = 1; i <= nfonts; i++) {
 		fontbase[i] = (struct Font *) p;
 		nw = *p & BYTEMASK;	/* 1st thing is width count */
@@ -265,7 +284,6 @@ ptinit(void)
 	pts = pts2u(pts);
 	pts1 = pts2u(pts1);
 	ics = ICS;
-	specnames();	/* install names like "hyphen", etc. */
 	for (i = 0; i <= nfonts; i++)
 		setlig(i, fontbase[i]->ligfont);
 	kern = xflag;
@@ -291,6 +309,7 @@ ptinit(void)
 #ifdef	EUC
 	ptlocale(setlocale(LC_CTYPE, NULL));
 #endif	/* EUC */
+	free(termtab);
 }
 
 void
@@ -298,26 +317,26 @@ specnames(void)
 {
 	static struct {
 		int	*n;
-		char	*v;
+		const char	*v;
 	} spnames[] = {
-		&c_hyphen, "hy",
-		&c_emdash, "em",
-		&c_endash, "en",
-		&c_rule, "ru",
-		&c_minus, "\\-",
-		&c_fi, "fi",
-		&c_fl, "fl",
-		&c_ff, "ff",
-		&c_ffi, "Fi",
-		&c_ffl, "Fl",
-		&c_acute, "aa",
-		&c_grave, "ga",
-		&c_under, "ul",
-		&c_rooten, "rn",
-		&c_boxrule, "br",
-		&c_lefthand, "lh",
-		&c_dagger, "dg",
-		0, 0
+		{ &c_hyphen  , "hy" },
+		{ &c_emdash  , "em" },
+		{ &c_endash  , "en" },
+		{ &c_rule    , "ru" },
+		{ &c_minus   , "\\-"},
+		{ &c_fi      , "fi" },
+		{ &c_fl      , "fl" },
+		{ &c_ff      , "ff" },
+		{ &c_ffi     , "Fi" },
+		{ &c_ffl     , "Fl" },
+		{ &c_acute   , "aa" },
+		{ &c_grave   , "ga" },
+		{ &c_under   , "ul" },
+		{ &c_rooten  , "rn" },
+		{ &c_boxrule , "br" },
+		{ &c_lefthand, "lh" },
+		{ &c_dagger  , "dg" },
+		{ 0          , 0    }
 	};
 	static int	twice;
 	int	i;
@@ -329,7 +348,7 @@ specnames(void)
 }
 
 int
-findch(register char *s)	/* find char s in chname */
+findch(register const char *s)	/* find char s in chname */
 {
 	register int	i;
 
@@ -406,7 +425,7 @@ ptout0(tchar *pi, tchar *pend)
 	struct afmtab	*a;
 	register int j;
 	register int k, w = 0;
-	int	z, dx, dy, dx2, dy2, n;
+	int	z, dx, dy, dx2, dy2, n, c;
 	register tchar	i;
 	int outsize;	/* size of object being printed */
 	double	f;
@@ -491,17 +510,19 @@ ptout0(tchar *pi, tchar *pend)
 		case LINKON:
 			linkout = sbits(i);
 			linkhp = hpos + esc;
+			if (html) ptlink(sbits(i));
 			return(pi+outsize);
 		case LINKOFF:
-			ptlink(sbits(i));
+			ptlink(html ? 0 : sbits(i));
 			linkout = 0;
 			return(pi+outsize);
 		case ULINKON:
 			linkout = sbits(i);
 			linkhp = hpos + esc;
+			if (html) ptulink(sbits(i));
 			return(pi+outsize);
 		case ULINKOFF:
-			ptulink(sbits(i));
+			ptulink(html ? 0 : sbits(i));
 			linkout = 0;
 			return(pi+outsize);
 		case INDENT:
@@ -542,6 +563,9 @@ ptout0(tchar *pi, tchar *pend)
 	if (k < 040 && k != DRAWFCN)
 		return(pi+outsize);
 	if (k >= 32) {
+		if (html && k >= NCHARS)
+			w = getcw(0);
+		else
 		if (widcache[k-32].fontpts == xfont + (xpts<<8)  && !setwdf &&
 				kern == 0 && horscale == 0) {
 			w = widcache[k-32].width;
@@ -599,16 +623,16 @@ ptout0(tchar *pi, tchar *pend)
 		dy = absmot(pi[4]);
 		if (isnmot(pi[4]))
 			dy = -dy;
-		switch (cbits(pi[1])) {
+		switch ((c=cbits(pi[1]))) {
 		case DRAWCIRCLE:	/* circle */
 		case DRAWCIRCLEFI:
-			fdprintf(ptid, "D%c %d\n", DRAWCIRCLE, dx);	/* dx is diameter */
+			fdprintf(ptid, "D%c %d\n", c, dx);	/* dx is diameter */
 			w = 0;
 			hpos += dx;
 			break;
 		case DRAWELLIPSE:
 		case DRAWELLIPSEFI:
-			fdprintf(ptid, "D%c %d %d\n", DRAWELLIPSE, dx, dy);
+			fdprintf(ptid, "D%c %d %d\n", c, dx, dy);
 			w = 0;
 			hpos += dx;
 			break;
@@ -684,14 +708,7 @@ ptout0(tchar *pi, tchar *pend)
 	} else {
 		if (esc)
 			ptesc();
-		if (k >= nchtab + 128) {
-			if (a && (j = a->fitab[k-nchtab-128-32]) < a->nchars &&
-					a->nametab[j] != NULL)
-				fdprintf(ptid, "CPS%s\n", a->nametab[j]);
-			else
-				fdprintf(ptid, "N%d\n", k - (nchtab+128));
-		} else
-			fdprintf(ptid, "C%s\n", &chname[chtab[k - 128]]);
+		pnc(k, a);
 	}
 	if (bd && !fmtchar) {
 		bd -= HOR;
@@ -699,14 +716,8 @@ ptout0(tchar *pi, tchar *pend)
 			ptesc();
 		if (k < 128) {
 			fdprintf(ptid, "c%c\n", k);
-		} else if (k >= nchtab + 128) {
-			if (a && (j = a->fitab[k-nchtab-128-32]) < a->nchars &&
-					a->nametab[j] != NULL)
-				fdprintf(ptid, "CPS%s\n", a->nametab[j]);
-			else
-				fdprintf(ptid, "N%d\n", k - (nchtab+128));
 		} else
-			fdprintf(ptid, "C%s\n", &chname[chtab[k - 128]]);
+			pnc(k, a);
 		if (z)
 			esc -= bd;
 	}
@@ -716,16 +727,33 @@ ptout0(tchar *pi, tchar *pend)
 	return(pi+outsize);
 }
 
+static void
+pnc(int k, struct afmtab *a) {
+	int j;
+
+	if (k >= nchtab + 128) {
+		if (a && (j = a->fitab[k-nchtab-128-32]) < a->nchars &&
+		    a->nametab[j] != NULL) {
+			fdprintf(ptid, "CPS%s\n", a->nametab[j]);
+		} else {
+			fdprintf(ptid, "N%d\n",
+			    k - (html ? 0 : (nchtab + 128)) );
+		}
+	} else {
+		fdprintf(ptid, "C%s\n", &chname[chtab[k - 128]]);
+	}
+}
+
 static int
 okern(tchar *pi, tchar *pend, int outsize)
 {
 	int	j;
 
 	for (j = outsize; &pi[j] < pend; j++)
-		if (cbits(pi[j]) != XFUNC || fbits(pi[j]) != LETSP &&
+		if (cbits(pi[j]) != XFUNC || (fbits(pi[j]) != LETSP &&
 				fbits(pi[j]) != NLETSP &&
 				fbits(pi[j]) != LETSH &&
-				fbits(pi[j]) != NLETSH)
+				fbits(pi[j]) != NLETSH))
 			break;
 	if (&pi[j] < pend)
 		return getkw(pi[0], pi[j]);
@@ -775,7 +803,7 @@ ptps(void)
 	s = u2pts(k);
 	if ((z = zoomtab[xfont]) != 0 && dev.anysize && xflag)
 		s *= z;
-	if (dev.anysize && xflag && (!found || z != 0 && z != 1))
+	if (dev.anysize && xflag && (!found || (z != 0 && z != 1)))
 		fdprintf(ptid, "s-23 %g\n", s);
 	else
 		fdprintf(ptid, "s%d\n", (int)s);	/* really should put out string rep of size */
@@ -796,7 +824,7 @@ ptfont(void)
 }
 
 void
-ptfpcmd(int f, char *s, char *path, int flags)
+ptfpcmd(int f, const char *s, char *path, int flags)
 {
 	if (ascii)
 		return;
@@ -877,9 +905,11 @@ ptlocale(const char *cp)
 	static char	*lp;
 
 	if (cp != NULL) {
+		size_t l;
 		free(lp);
-		lp = malloc(strlen(cp) + 1);
-		strcpy(lp, cp);
+		l = strlen(cp) + 1;
+		lp = malloc(l);
+		n_strcpy(lp, cp, l);
 	}
 	if (ascii || realpage == 0 || lp == NULL || dev.lc_ctype == 0)
 		return;
@@ -895,8 +925,12 @@ ptanchor(int n)
 		return;
 	for (rp = anchors; rp; rp = rp->next)
 		if (rp->cnt == n) {
-			fdprintf(ptid, "x X Anchor %d,%d %s\n",
-				vpos + lead - lss, hpos + esc, rp->name);
+			if (html) {
+				fdprintf(ptid, "x X Anchor %s\n", rp->name);
+			} else {
+				fdprintf(ptid, "x X Anchor %d,%d %s\n",
+				    vpos + lead - lss, hpos + esc, rp->name);
+			}
 			break;
 		}
 }
@@ -908,13 +942,21 @@ _ptlink(int n, struct ref *rstart, const char *type)
 
 	if (ascii)
 		return;
+	if (html && !n) {
+		fdprintf(ptid, "x X %s\n", type);
+		return;
+	}
 	for (rp = rstart; rp; rp = rp->next)
 		if (rp->cnt == n) {
-			fdprintf(ptid, "x X %s %d,%d,%d,%d %s\n",
-				type,
-				linkhp, vpos + pts2u(1),
-				hpos + esc, vpos - pts * 8 / 10,
-				rp->name);
+			if (html)
+				fdprintf(ptid, "x X %s %s\n", type, rp->name);
+			else
+				fdprintf(ptid, "x X %s %d,%d,%d,%d %s\n",
+				    type,
+				    linkhp, vpos + pts2u(1),
+				    hpos + esc, vpos - pts * 8 / 10,
+				    rp->name);
+			break;
 		}
 }
 
@@ -1055,8 +1097,9 @@ newpage(int n)	/* called at end of each output page (we hope) */
 				a->encpath, (int)a->spec);
 			if (a->supply)
 				ptsupplyfont(a->fontname, a->supply);
-		} else if (fontbase[i]->namefont && fontbase[i]->namefont[0])
-			fdprintf(ptid, "x font %d %s\n", i, macname(fontlab[i]));
+		} else if (fontbase[i]->namefont[0])
+			fdprintf(ptid, "x font %d %s\n", i,
+				mapft(macname(fontlab[i])));
 	}
 	ptps();
 	ptfont();

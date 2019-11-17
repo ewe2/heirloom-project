@@ -1,12 +1,12 @@
 #
 # A BSD-compatible install command.
 #
-INSTALL=/usr/ucb/install
+INSTALL=install
 
 #
 # Packaging prefix.
 #
-PREFIX=/usr
+PREFIX=/usr/local
 
 #
 # Where to place binaries.
@@ -26,7 +26,7 @@ PUBDIR=$(PREFIX)/pub
 #
 # Where to place manual pages.
 #
-MANDIR=$(PREFIX)/share/man/5man
+MANDIR=$(PREFIX)/share/heirloom-doctools/man
 
 #
 # Where to place the troff macro packages.
@@ -68,22 +68,22 @@ EUC=-DEUC
 #
 # Binaries are stripped with this command after installation.
 #
-STRIP=strip -s -R .comment -R .note
+STRIP=strip
 
 #
 # The C compiler.
 #
-CC=cc
+#CC=
 
 #
 # The C++ compiler.
 #
-CCC=c++
+#CXX=
 
 #
 # Compiler flags.
 #
-CFLAGS=-O
+_CFLAGS=$(CFLAGS) $(_CPPFLAGS) $(__CDBG) $(__CLDBG)
 
 #
 # C preprocessor flags.
@@ -91,45 +91,35 @@ CFLAGS=-O
 # Use -D_GNU_SOURCE for Linux with GNU libc.
 # Use -D_INCLUDE__STDC_A1_SOURCE for HP-UX.
 #
-CPPFLAGS=-D_GNU_SOURCE
-
-#
-# Warning flags for the compiler.
-#
-#WARN=
+_CPPFLAGS=$(CPPFLAGS) -D_GNU_SOURCE
 
 #
 # Linker flags.
 #
-LDFLAGS=
+_LDFLAGS=$(LDFLAGS) $(__CLDBG)
 
 #
 # Additional libraries to link with.
 #
-LIBS=
+#LIBS=
 
 #
 # A Bourne-compatible shell.
 #
-SHELL=/home/ewe2/bin/heirloom-sh
-
-#
-# Run ranlib if it is in the current path. This should take care
-# of most situations. On Mac OS X, you need to uncomment "ranlib -c".
-#
-RANLIB=(hash ranlib) >/dev/null 2>&1 || exit 0; ranlib
-#RANLIB=ranlib -c
+SHELL=/bin/sh
+RELEASE = Git snapshot 190405
+#RELEASE = release 160308
 OBJ = regexp.o vfontedpr.o vgrindefs.o version.o
 
-FLAGS = $(EUC) -DLIBDIR='"$(LIBDIR)"'
+FLAGS = $(EUC) -DLIBDIR='"$(LIBDIR)"' $(DEFINES) -I../include
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(FLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
-all: vgrind vfontedpr
+all: vgrind vfontedpr vgrind.1
 
 vfontedpr: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o vfontedpr
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(OBJ) $(LIBS) -o vfontedpr
 
 vgrind: vgrind.sh
 	rm -f $@
@@ -147,9 +137,13 @@ install:
 	$(INSTALL) -c vfontedpr $(ROOT)$(LIBDIR)/vfontedpr
 	$(STRIP) $(ROOT)$(LIBDIR)/vfontedpr
 	$(INSTALL) -c -m 644 vgrindefs.src $(ROOT)$(LIBDIR)/vgrindefs
-	$(INSTALL) -c -m 644 vgrind.1b $(ROOT)$(MANDIR)/man1b/vgrind.1b
+	$(INSTALL) -c -m 644 vgrind.1 $(ROOT)$(MANDIR)/man1/vgrind.1
 
 clean:
-	rm -f $(OBJ) vfontedpr vgrind retest retest.o core log *~
+	rm -f $(OBJ) vfontedpr vgrind retest retest.o core log *~ vgrind.1
 
 mrproper: clean
+
+vgrind.1: vgrind.1.in
+	sed -e 's"/usr/ucblib/tmac/"$(ROOT)$(MACDIR)/"' \
+	    -e 's"/usr/ucblib/"$(ROOT)$(LIBDIR)/"' vgrind.1.in > $@

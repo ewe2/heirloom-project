@@ -33,20 +33,31 @@
  *
  * Sccsid @(#)e.y	1.7 (gritter) 10/2/07
  */
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
 #include "e.h"
 #include <stdlib.h>
 #include <inttypes.h>
-#
+
 int	fromflg;
 
 #define	__YYSCLASS	/* to get external access to yyval with HP-UX yacc */
 %}
-%term	CONTIG QTEXT SPACE THIN TAB
-%term	MATRIX LCOL CCOL RCOL COL
-%term	MARK LINEUP
-%term	SUM INT PROD UNION INTER
-%term	LPILE PILE CPILE RPILE ABOVE
-%term	DEFINE TDEFINE NDEFINE DELIM GSIZE GFONT INCLUDE
+%union {
+	int token;
+	char *str;
+}
+%token <str> CONTIG QTEXT SPACE THIN TAB
+%token <token> MATRIX LCOL CCOL RCOL COL
+%token <token> MARK LINEUP
+%token <token> SUM INT PROD UNION INTER
+%token <token> LPILE PILE CPILE RPILE ABOVE
+%token <token> DEFINE TDEFINE NDEFINE DELIM GSIZE GFONT INCLUDE
+%type <str> text
+%type <token> eqn box lineupbox matrix lcol ccol rcol col sbox tbox size font
+%type <token> lpile cpile rpile pile sub sup int left right diacrit fwd up back
+%type <token> down from to pbox
 %right	FROM TO
 %left	OVER SQRT
 %right	SUP SUB
@@ -127,10 +138,10 @@ box	: box OVER box	{ boverb($1, $3); }
 int	: INT	{ setintegral(); }
 	;
 
-fwd	: FWD text	{ $$ = atoi((char *) $1); } ;
-up	: UP text	{ $$ = atoi((char *) $1); } ;
-back	: BACK text	{ $$ = atoi((char *) $1); } ;
-down	: DOWN text	{ $$ = atoi((char *) $1); } ;
+fwd	: FWD text	{ $$ = atoi((char *) $2); } ;
+up	: UP text	{ $$ = atoi((char *) $2); } ;
+back	: BACK text	{ $$ = atoi((char *) $2); } ;
+down	: DOWN text	{ $$ = atoi((char *) $2); } ;
 
 diacrit	: HAT	{ $$ = HAT; }
 	| VEC	{ $$ = VEC; }

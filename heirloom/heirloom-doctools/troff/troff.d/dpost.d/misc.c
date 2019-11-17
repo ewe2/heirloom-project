@@ -51,18 +51,20 @@
 #include <string.h>
 #include <fcntl.h>
 
+#include "global.h"
 #include "gen.h"			/* a few general purpose definitions */
 #include "ext.h"			/* external variable declarations */
 #include "path.h"
 #include "asciitype.h"
 
+void errprint(char *fmt, ...);
 
-static int	nolist = 0;		/* number of specified ranges */
+static size_t	nolist = 0;		/* number of specified ranges */
 static int	olist[512];		/* processing range pairs */
 
 
 void
-error(int kind, char *mesg, ...)
+error(int kind, const char *mesg, ...)
 {
 
 
@@ -102,7 +104,7 @@ error(int kind, char *mesg, ...)
 
 /*****************************************************************************/
 /* for the AFM handling functions from troff */
-void
+static void
 verrprint(char *fmt, va_list ap)
 {
     fprintf(stderr, "%s: ", prog_name);
@@ -176,7 +178,7 @@ in_olist (
 {
 
 
-    int		i;			/* just a loop index */
+    size_t		i;			/* just a loop index */
 
 
 /*
@@ -202,9 +204,9 @@ in_olist (
 /*****************************************************************************/
 
 
-int 
+int
 cat (
-    char *file,			/* copy this file to out */
+    const char *file,			/* copy this file to out */
     FILE *out
 )
 
@@ -256,6 +258,7 @@ str_convert (
 
 
     int		i;			/* just a loop index */
+    int		c;
 
 
 /*
@@ -266,11 +269,11 @@ str_convert (
  */
 
 
-    if ( ! isdigit(**str) )		/* something's wrong */
+    if ( ! isdigit(c = **str) )		/* something's wrong */
 	return(err);
 
-    for ( i = 0; isdigit(**str); *str += 1 )
-	i = 10 * i + **str - '0';
+    for ( i = 0; isdigit(c = **str); *str += 1 )
+	i = 10 * i + c - '0';
 
     return(i);
 
@@ -283,11 +286,7 @@ str_convert (
 
 
 void interrupt(
-
-
-    int		sig)			/* signal that we caught */
-
-
+    int		sig __unused)			/* signal that we caught */
 {
 
 
@@ -312,8 +311,9 @@ void interrupt(
 char *
 tempname(const char *sfx)
 {
-    char *pat = malloc(strlen(TEMPDIR) + strlen(sfx) + 10);
-    sprintf(pat, "%s/%sXXXXXX", TEMPDIR, sfx);
+    size_t l = strlen(TEMPDIR) + strlen(sfx) + 10;
+    char *pat = malloc(l);
+    snprintf(pat, l, "%s/%sXXXXXX", TEMPDIR, sfx);
     if (close(mkstemp(pat)) < 0)
 	return NULL;
     return pat;
@@ -322,11 +322,6 @@ tempname(const char *sfx)
 
 /*****************************************************************************/
 
-
-#if defined (__GLIBC__) && defined (_IO_getc_unlocked)
-#undef	getc
-#define	getc(f)		_IO_getc_unlocked(f)
-#endif
 
 #define	LSIZE	512
 
@@ -377,7 +372,8 @@ char *psgetline(char **line, size_t *linesize, size_t *llen, FILE *fp)
 int
 sget(char *buf, size_t size, FILE *fp)
 {
-    int	c, n = 0;
+    int	c;
+    size_t n = 0;
 
     do
 	c = getc(fp);

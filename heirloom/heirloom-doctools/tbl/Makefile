@@ -1,12 +1,12 @@
 #
 # A BSD-compatible install command.
 #
-INSTALL=/usr/ucb/install
+INSTALL=install
 
 #
 # Packaging prefix.
 #
-PREFIX=/usr
+PREFIX=/usr/local
 
 #
 # Where to place binaries.
@@ -26,7 +26,7 @@ PUBDIR=$(PREFIX)/pub
 #
 # Where to place manual pages.
 #
-MANDIR=$(PREFIX)/share/man/5man
+MANDIR=$(PREFIX)/share/heirloom-doctools/man
 
 #
 # Where to place the troff macro packages.
@@ -68,22 +68,22 @@ EUC=-DEUC
 #
 # Binaries are stripped with this command after installation.
 #
-STRIP=strip -s -R .comment -R .note
+STRIP=strip
 
 #
 # The C compiler.
 #
-CC=cc
+#CC=
 
 #
 # The C++ compiler.
 #
-CCC=c++
+#CXX=
 
 #
 # Compiler flags.
 #
-CFLAGS=-O
+_CFLAGS=$(CFLAGS) $(_CPPFLAGS) $(__CDBG) $(__CLDBG)
 
 #
 # C preprocessor flags.
@@ -91,51 +91,41 @@ CFLAGS=-O
 # Use -D_GNU_SOURCE for Linux with GNU libc.
 # Use -D_INCLUDE__STDC_A1_SOURCE for HP-UX.
 #
-CPPFLAGS=-D_GNU_SOURCE
-
-#
-# Warning flags for the compiler.
-#
-#WARN=
+_CPPFLAGS=$(CPPFLAGS) -D_GNU_SOURCE
 
 #
 # Linker flags.
 #
-LDFLAGS=
+_LDFLAGS=$(LDFLAGS) $(__CLDBG)
 
 #
 # Additional libraries to link with.
 #
-LIBS=
+#LIBS=
 
 #
 # A Bourne-compatible shell.
 #
-SHELL=/home/ewe2/bin/heirloom-sh
-
-#
-# Run ranlib if it is in the current path. This should take care
-# of most situations. On Mac OS X, you need to uncomment "ranlib -c".
-#
-RANLIB=(hash ranlib) >/dev/null 2>&1 || exit 0; ranlib
-#RANLIB=ranlib -c
+SHELL=/bin/sh
+RELEASE = Git snapshot 190405
+#RELEASE = release 160308
 OBJ = t0.o t1.o t2.o t3.o t4.o t5.o t6.o t7.o t8.o t9.o tb.o tc.o te.o \
 	tf.o tg.o ti.o tm.o ts.o tt.o tu.o tv.o version.o
 
-FLAGS = -DMACDIR='"$(MACDIR)"'
+FLAGS = -DMACDIR='"$(MACDIR)"' -I../include
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(FLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
 all: tbl
 
 tbl: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o tbl
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(OBJ) $(LIBS) -o tbl
 
 install:
 	$(INSTALL) -c tbl $(ROOT)$(BINDIR)/tbl
 	$(STRIP) $(ROOT)$(BINDIR)/tbl
-	$(INSTALL) -c -m 644 tbl.1b $(ROOT)$(MANDIR)/man1b/tbl.1b
+	$(INSTALL) -c -m 644 tbl.1 $(ROOT)$(MANDIR)/man1/tbl.1
 
 clean:
 	rm -f $(OBJ) tbl core log *~

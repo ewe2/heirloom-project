@@ -17,7 +17,11 @@
 #include <string.h>
 #include <unistd.h>
 #include "grap.h"
+#include "global.h"
 #include "y.tab.h"
+
+static void onintr(int n);
+static void fpecatch(int n);
 
 int	dbg	= 0;
 
@@ -48,8 +52,6 @@ extern void getdata(void);
 int
 main(int argc, char *argv[])
 {
-	extern void onintr(int), fpecatch(int);
-
 	if (signal(SIGINT, SIG_IGN) != SIG_IGN)
 		signal(SIGINT, onintr);
 	signal(SIGFPE, fpecatch);
@@ -60,7 +62,7 @@ main(int argc, char *argv[])
 		case 'd':
 			dbg = 1;
 			tfd = stdout;
-			strcpy(tempfile, "grap.temp");
+			n_strcpy(tempfile, "grap.temp", sizeof(tempfile));
 			unlink(tempfile);
 			fprintf(stderr, "%s\n", version);
 			break;
@@ -102,14 +104,14 @@ main(int argc, char *argv[])
 }
 
 /*ARGSUSED*/
-void onintr(int n)
+static void onintr(int n __unused)
 {
 	if (!dbg)
 		unlink(tempfile);
 	exit(1);
 }
 
-void fpecatch(int n)
+static void fpecatch(int n)
 {
 	WARNING("floating point exception");
 	onintr(n);
@@ -132,11 +134,11 @@ static struct {
 	char	*name;
 	double	val;
 } defaults[] ={
-	"frameht", FRAMEHT,
-	"framewid", FRAMEWID,
-	"ticklen", TICKLEN,
-	"slop", SLOP,
-	NULL, 0
+	{ "frameht" , FRAMEHT  },
+	{ "framewid", FRAMEWID },
+	{ "ticklen" , TICKLEN  },
+	{ "slop"    , SLOP     },
+	{ NULL      , 0        }
 };
 
 void setdefaults(void)	/* set default sizes for variables */
@@ -156,12 +158,11 @@ void getdata(void)		/* read input */
 	char *buf = NULL, *buf1 = NULL;
 	size_t size = 0;
 	int ln;
-	char *fgetline(char **, size_t *, size_t *, FILE *);
 
 	fin = curfile->fin;
 	curfile->lineno = 0;
 	printf(".lf 1 %s\n", curfile->fname);
-	while (fgetline(&buf, &size, NULL, fin) != NULL) {
+	while (getline(&buf, &size, fin) > 0) {
 		curfile->lineno++;
 		if (*buf == '.' && *(buf+1) == 'G' && *(buf+2) == '1') {
 			setup();

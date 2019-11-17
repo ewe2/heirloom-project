@@ -1,12 +1,12 @@
 #
 # A BSD-compatible install command.
 #
-INSTALL=/usr/ucb/install
+INSTALL=install
 
 #
 # Packaging prefix.
 #
-PREFIX=/usr
+PREFIX=/usr/local
 
 #
 # Where to place binaries.
@@ -26,7 +26,7 @@ PUBDIR=$(PREFIX)/pub
 #
 # Where to place manual pages.
 #
-MANDIR=$(PREFIX)/share/man/5man
+MANDIR=$(PREFIX)/share/heirloom-doctools/man
 
 #
 # Where to place the troff macro packages.
@@ -68,22 +68,22 @@ EUC=-DEUC
 #
 # Binaries are stripped with this command after installation.
 #
-STRIP=strip -s -R .comment -R .note
+STRIP=strip
 
 #
 # The C compiler.
 #
-CC=cc
+#CC=
 
 #
 # The C++ compiler.
 #
-CCC=c++
+#CXX=
 
 #
 # Compiler flags.
 #
-CFLAGS=-O
+_CFLAGS=$(CFLAGS) $(_CPPFLAGS) $(__CDBG) $(__CLDBG)
 
 #
 # C preprocessor flags.
@@ -91,34 +91,24 @@ CFLAGS=-O
 # Use -D_GNU_SOURCE for Linux with GNU libc.
 # Use -D_INCLUDE__STDC_A1_SOURCE for HP-UX.
 #
-CPPFLAGS=-D_GNU_SOURCE
-
-#
-# Warning flags for the compiler.
-#
-#WARN=
+_CPPFLAGS=$(CPPFLAGS) -D_GNU_SOURCE
 
 #
 # Linker flags.
 #
-LDFLAGS=
+_LDFLAGS=$(LDFLAGS) $(__CLDBG)
 
 #
 # Additional libraries to link with.
 #
-LIBS=
+#LIBS=
 
 #
 # A Bourne-compatible shell.
 #
-SHELL=/home/ewe2/bin/heirloom-sh
-
-#
-# Run ranlib if it is in the current path. This should take care
-# of most situations. On Mac OS X, you need to uncomment "ranlib -c".
-#
-RANLIB=(hash ranlib) >/dev/null 2>&1 || exit 0; ranlib
-#RANLIB=ranlib -c
+SHELL=/bin/sh
+RELEASE = Git snapshot 190405
+#RELEASE = release 160308
 TABS = tab.2631 tab.2631-c tab.2631-e tab.lp \
 	tab.300 tab.300-12 tab.300s tab.300s-12 tab.382 \
 	tab.4000a tab.450 tab.450-12 tab.832 \
@@ -193,16 +183,15 @@ tab.4000A: tab.4000a
 
 install: all
 	test -d $(ROOT)$(TABDIR) || mkdir -p $(ROOT)$(TABDIR)
-	for i in $(TABS); \
+	cd $(ROOT)$(TABDIR) && rm -f tab.300S tab.300S-12 tab.4000A
+	for i in $(TABS) tab.utf8; \
 	do \
 		$(INSTALL) -c -m 644 $$i $(ROOT)$(TABDIR)/$$i || exit; \
 	done
-	rm -f $(ROOT)$(TABDIR)/tab.300S
-	cd $(ROOT)$(TABDIR) && ln -s tab.300s tab.300S
-	rm -f $(ROOT)$(TABDIR)/tab.300S-12
-	cd $(ROOT)$(TABDIR) && ln -s tab.300s-12 tab.300S-12
-	rm -f $(ROOT)$(TABDIR)/tab.4000A
-	cd $(ROOT)$(TABDIR) && ln -s tab.4000a tab.4000A
+	cd $(ROOT)$(TABDIR) || exit 1; \
+	test -e tab.300S    || ln -s tab.300s tab.300S       || exit 1; \
+	test -e tab.300S-12 || ln -s tab.300s-12 tab.300S-12 || exit 1; \
+	test -e tab.4000A   || ln -s tab.4000a tab.4000A     || exit 1;
 
 clean:
 	rm -f $(TABS) $(LINKS)

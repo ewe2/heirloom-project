@@ -17,6 +17,7 @@
 #include	"pic.h"
 #include	"y.tab.h"
 
+static void reset(void);
 extern const char	version[];
 
 obj	**objlist = 0;		/* store the elements here */
@@ -44,9 +45,8 @@ double	deltx	= 6;	/* max x value in output, for scaling */
 double	delty	= 6;	/* max y value in output, for scaling */
 int	dbg	= 0;
 int	lineno	= 0;
-char	*filename	= "-";
 int	synerr	= 0;
-int	anyerr	= 0;	/* becomes 1 if synerr ever 1 */
+static int	anyerr	= 0;	/* becomes 1 if synerr ever 1 */
 char	*cmdname;
 int	Sflag;
 
@@ -57,7 +57,6 @@ double	ymax	= -30000;
 
 void	fpecatch(int);
 void	getdata(void), setdefaults(void);
-void	setfval(char *, double);
 int	getpid(void);
 
 int
@@ -93,7 +92,7 @@ main(int argc, char *argv[])
 	text = (Text *) grow((char *)text, "text", ntextlist += 1000, sizeof(Text));
 	attr = (Attr *) grow((char *)attr, "attr", nattrlist += 100, sizeof(Attr));
 
-	sprintf(buf, "/%d/", getpid());
+	snprintf(buf, sizeof(buf), "/%d/", getpid());
 	pushsrc(String, buf);
 	definition("pid");
 
@@ -122,7 +121,7 @@ void fpecatch(int n)
 	FATAL("floating point exception %d", n);
 }
 
-char *grow(char *ptr, char *name, int num, int size)	/* make array bigger */
+char *grow(char *ptr, const char *name, int num, int size)	/* make array bigger */
 {
 	char *p;
 
@@ -136,31 +135,31 @@ char *grow(char *ptr, char *name, int num, int size)	/* make array bigger */
 }
 
 static struct {
-	char *name;
+	const char *name;
 	double val;
 	short scalable;		/* 1 => adjust when "scale" changes */
 } defaults[] ={
-	"scale", SCALE, 1,
-	"lineht", HT, 1,
-	"linewid", HT, 1,
-	"moveht", HT, 1,
-	"movewid", HT, 1,
-	"dashwid", HT10, 1,
-	"boxht", HT, 1,
-	"boxwid", WID, 1,
-	"circlerad", HT2, 1,
-	"arcrad", HT2, 1,
-	"ellipseht", HT, 1,
-	"ellipsewid", WID, 1,
-	"arrowht", HT5, 1,
-	"arrowwid", HT10, 1,
-	"arrowhead", 2, 0,		/* arrowhead style */
-	"textht", 0.0, 1,		/* 6 lines/inch is also a useful value */
-	"textwid", 0.0, 1,
-	"maxpsht", MAXHT, 0,
-	"maxpswid", MAXWID, 0,
-	"fillval", 0.7, 0,		/* gray value for filling boxes */
-	NULL, 0, 0
+	{ "scale"     , SCALE , 1 },
+	{ "lineht"    , HT    , 1 },
+	{ "linewid"   , HT    , 1 },
+	{ "moveht"    , HT    , 1 },
+	{ "movewid"   , HT    , 1 },
+	{ "dashwid"   , HT10  , 1 },
+	{ "boxht"     , HT    , 1 },
+	{ "boxwid"    , WID   , 1 },
+	{ "circlerad" , HT2   , 1 },
+	{ "arcrad"    , HT2   , 1 },
+	{ "ellipseht" , HT    , 1 },
+	{ "ellipsewid", WID   , 1 },
+	{ "arrowht"   , HT5   , 1 },
+	{ "arrowwid"  , HT10  , 1 },
+	{ "arrowhead" , 2     , 0 },		/* arrowhead style */
+	{ "textht"    , 0.0   , 1 },		/* 6 lines/inch is also a useful value */
+	{ "textwid"   , 0.0   , 1 },
+	{ "maxpsht"   , MAXHT , 0 },
+	{ "maxpswid"  , MAXWID, 0 },
+	{ "fillval"   , 0.7   , 0 },		/* gray value for filling boxes */
+	{ NULL        , 0     , 0 }
 };
 
 void setdefaults(void)	/* set default sizes for variables like boxht */
@@ -210,15 +209,26 @@ void getdata(void)
 	char *p, *buf = NULL, *buf1 = NULL;
 	size_t size = 0;
 	int ln;
-	void reset(void), openpl(char *), closepl(char *), print(void);
+	void openpl(char *), closepl(char *);
 	int yyparse(void);
-	char *fgetline(char **, size_t *, size_t *, FILE *);
 
 	curfile->lineno = 0;
 	printlf(1, curfile->fname);
-	while (fgetline(&buf, &size, NULL, curfile->fin) != NULL) {
+	while (getline(&buf, &size, curfile->fin) > 0) {
 		curfile->lineno++;
-		if (*buf == '.' && *(buf+1) == 'P' && *(buf+2) == 'S') {
+		if (buf[0] == '.' && buf[1] == 'l' && buf[2] == 'f') {
+			buf1 = realloc(buf1, size);
+			if (sscanf(buf+3, "%d %s", &ln, buf1) == 2) {
+				free(curfile->fname);
+				printlf(curfile->lineno = ln, curfile->fname = tostring(buf1));
+			} else
+				printlf(curfile->lineno = ln, NULL);
+		} else if (*buf == '.') {
+			for (p = buf + 1; *p == ' ' || *p == '\t'; p++);
+			if (!*p || *p != 'P' || p[1] != 'S') {
+				fputs(buf, stdout);
+				continue;
+			}
 			for (p = &buf[3]; *p == ' '; p++)
 				;
 			if (*p++ == '<') {
@@ -265,13 +275,6 @@ void getdata(void)
 			}
 			printlf(curfile->lineno+1, NULL);
 			fflush(stdout);
-		} else if (buf[0] == '.' && buf[1] == 'l' && buf[2] == 'f') {
-			buf1 = realloc(buf1, size);
-			if (sscanf(buf+3, "%d %s", &ln, buf1) == 2) {
-				free(curfile->fname);
-				printlf(curfile->lineno = ln, curfile->fname = tostring(buf1));
-			} else
-				printlf(curfile->lineno = ln, NULL);
 		} else
 			fputs(buf, stdout);
 	}
@@ -279,12 +282,11 @@ void getdata(void)
 	free(buf1);
 }
 
-void reset(void)
+static void reset(void)
 {
 	obj *op;
 	int i;
 	extern int nstack;
-	extern	void freesymtab(struct symtab *);
 
 	for (i = 0; i < nobj; i++) {
 		op = objlist[i];

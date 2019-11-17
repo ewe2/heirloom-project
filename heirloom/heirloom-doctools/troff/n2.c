@@ -69,7 +69,7 @@
 #include "ext.h"
 
 extern	jmp_buf	sjbuf;
-int	toolate;
+static int	toolate;
 int	error;
 
 static void	outtp(tchar);
@@ -130,6 +130,17 @@ pchar(register tchar i)
 			j = eschar;	/* fall through */
 	default:
 	dfl:
+#ifndef NROFF
+		if (html) {
+			if (!xflag || !isdi(i)) {
+				setcbits(i, j >= NCHARS ? j :
+				    tflg ? trnttab[j] : trtab[j]);
+				if (xon == 0 && drawfcn == 0 && i < NCHARS)
+					setcbits(i, ftrans(fbits(i),
+					    cbits(i)));
+			}
+		} else
+#endif
 		if (!xflag || !isdi(i)) {
 			setcbits(i, tflg ? trnttab[j] : trtab[j]);
 			if (xon == 0 && drawfcn == 0)
@@ -152,8 +163,6 @@ pchar1(register tchar i)
 	tchar	_olp[1];
 	register int j;
 	filep	savip;
-	extern void ptout(tchar);
-
 	j = cbits(i);
 	if (dip != &d[0]) {
 		if (i == FLSS)
@@ -202,8 +211,8 @@ pchar1(register tchar i)
 			return;
 		}
 	}
-	if (cbits(i) == 'x')
-		fmtchar = fmtchar;
+/*	if (cbits(i) == 'x')
+		fmtchar = fmtchar; */
 	if (_olt) {
 		_olp[0] = i;
 		olt[nolt++] = fetchrq(_olp);
@@ -220,6 +229,7 @@ pchar1(register tchar i)
 static void
 outtp(tchar i)
 {
+#ifndef NROFF
 	int	j = cbits(i);
 
 #ifdef	EUC
@@ -228,6 +238,9 @@ outtp(tchar i)
 	else
 #endif	/* EUC */
 		fdprintf(ptid, "%c", j);
+#else
+	(void)i;
+#endif
 }
 
 #ifndef	NROFF
@@ -285,7 +298,7 @@ outascii (	/* print i in best-guess ascii */
 		oput(' ');
 		return;
 	}
-	if (j < 0177 && j >= ' ' || j == '\n') {
+	if ((j < 0177 && j >= ' ') || j == '\n') {
 		oput(j);
 		return;
 	}
@@ -320,7 +333,7 @@ oput(i)
 */
 
 void
-oputs(register char *i)
+oputs(register const char *i)
 {
 	while (*i != 0)
 		oput(*i++&0377);
@@ -383,7 +396,7 @@ done(int x)
 		tbreak();
 		donep = 0;
 	}
-	if (i = em) {
+	if ((i = em)) {
 		donef = -1;
 		em = 0;
 		if (control(i, 0))

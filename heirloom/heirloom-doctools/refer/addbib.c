@@ -36,16 +36,17 @@ static struct skeleton {
 	char prompt[20];	/* prompt user for entry */
 	char keylet[5]; 	/* key letter for database */
 } bibskel[MAXENT] = {
-	"   Author:",	"%A",
-	"    Title:",	"%T",
-	"  Journal:",	"%J",
-	"   Volume:", 	"%V",
-	"    Pages:",	"%P",
-	"Publisher:",	"%I",
-	"     City:", 	"%C",
-	"     Date:", 	"%D",
-	"    Other:",	"%O",
-	" Keywords:",	"%K",	};
+	{ "   Author:",	"%A" },
+	{ "    Title:",	"%T" },
+	{ "  Journal:",	"%J" },
+	{ "   Volume:",	"%V" },
+	{ "    Pages:",	"%P" },
+	{ "Publisher:",	"%I" },
+	{ "     City:",	"%C" },
+	{ "     Date:",	"%D" },
+	{ "    Other:",	"%O" },
+	{ " Keywords:",	"%K" }
+};
 
 static int entries = 10;	/* total number of entries in bibskel */
 static int abstract = 1;	/* asking for abstracts is the default */
@@ -222,7 +223,7 @@ trim(char *line)		/* trim line of trailing white space */
 	n = strlen(line);
 	while (--n >= 0)
 	{
-		if (!isspace(line[n]))
+		if (!isspace((int)line[n]))
 			break;
 	}
 	line[++n] = '\n';
@@ -235,7 +236,7 @@ bibedit(FILE *fp, char *cmd, char *arg)	/* edit database with edit, ex, or vi */
 	int i = 0, status, pid;
 
 	fclose(fp);
-	while (!isspace(cmd[i]))
+	while (!isspace((int)cmd[i]))
 		i++;
 	cmd[i] = 0;
 	if ((pid = fork()) == 0)

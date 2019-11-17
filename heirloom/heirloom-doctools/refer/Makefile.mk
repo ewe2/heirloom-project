@@ -11,33 +11,36 @@ HOBJ = hunt1.o hunt2.o hunt3.o hunt5.o hunt6.o hunt7.o glue5.o refer3.o \
 	hunt9.o shell.o deliv2.o hunt8.o glue4.o tick.o version.o
 
 
-FLAGS = -DMACDIR='"$(MACDIR)"' -DREFDIR='"$(REFDIR)"' $(EUC)
+FLAGS =	-DMACDIR='"$(MACDIR)"' -DREFDIR='"$(REFDIR)"' $(EUC) $(DEFINES) \
+	-I../include
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(FLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
-all: refer addbib lookbib sortbib roffbib indxbib mkey inv hunt papers/runinv
+all: refer addbib lookbib sortbib roffbib indxbib mkey inv hunt papers/runinv \
+    lookbib.1 refer.1 roffbib.1
+	cd papers && PATH=..:$$PATH sh runinv
 
 refer: $(ROBJ)
-	$(CC) $(LDFLAGS) $(ROBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(ROBJ) $(LIBS) -o $@
 
 addbib: $(AOBJ)
-	$(CC) $(LDFLAGS) $(AOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(AOBJ) $(LIBS) -o $@
 
 lookbib: $(LOBJ)
-	$(CC) $(LDFLAGS) $(LOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(LOBJ) $(LIBS) -o $@
 
 sortbib: $(SOBJ)
-	$(CC) $(LDFLAGS) $(SOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(SOBJ) $(LIBS) -o $@
 
 mkey: $(MOBJ)
-	$(CC) $(LDFLAGS) $(MOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(MOBJ) $(LIBS) -o $@
 
 inv: $(IOBJ)
-	$(CC) $(LDFLAGS) $(IOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(IOBJ) $(LIBS) -o $@
 
 hunt: $(HOBJ)
-	$(CC) $(LDFLAGS) $(HOBJ) $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(HOBJ) $(LIBS) -o $@
 
 indxbib: indxbib.sh
 	rm -f $@
@@ -69,23 +72,36 @@ install: all
 		$(STRIP) $(ROOT)$(REFDIR)/$$i || exit; \
 	done
 	test -d $(ROOT)$(REFDIR)/papers || mkdir -p $(ROOT)$(REFDIR)/papers
-	$(INSTALL) -c papers/Rbstjissue $(ROOT)$(REFDIR)/papers/Rbstjissue
-	$(INSTALL) -c papers/Rv7man $(ROOT)$(REFDIR)/papers/Rv7man
+	$(INSTALL) -c -m 644 \
+	    papers/Rbstjissue $(ROOT)$(REFDIR)/papers/Rbstjissue
+	$(INSTALL) -c -m 644 papers/Rv7man $(ROOT)$(REFDIR)/papers/Rv7man
 	$(INSTALL) -c papers/runinv $(ROOT)$(REFDIR)/papers/runinv
-	cd $(ROOT)$(REFDIR)/papers && PATH=$(ROOT)$(REFDIR):$$PATH ./runinv
-	for i in addbib.1b lookbib.1b refer.1b roffbib.1b sortbib.1b; \
-	do \
-		$(INSTALL) -c -m 644 $$i $(ROOT)$(MANDIR)/man1b/$$i || exit; \
+	for i in a b c; do \
+		$(INSTALL) -m 644 papers/Ind.i$$i $(ROOT)$(REFDIR)/papers/; \
 	done
-	rm -f $(ROOT)$(MANDIR)/man1b/indxbib.1b
-	ln -s lookbib.1b $(ROOT)$(MANDIR)/man1b/indxbib.1b
+	for i in addbib.1 lookbib.1 refer.1 roffbib.1 sortbib.1; \
+	do \
+		$(INSTALL) -c -m 644 $$i $(ROOT)$(MANDIR)/man1/$$i || exit; \
+	done
+	rm -f $(ROOT)$(MANDIR)/man1/indxbib.1
+	ln -s lookbib.1 $(ROOT)$(MANDIR)/man1/indxbib.1
 
 clean:
 	rm -f $(ROBJ) refer $(AOBJ) addbib $(LOBJ) lookbib \
 		$(SOBJ) sortbib roffbib indxbib $(MOBJ) mkey \
-		$(IOBJ) inv $(HOBJ) hunt papers/runinv core log *~
+		$(IOBJ) inv $(HOBJ) hunt papers/runinv core log *~ \
+		papers/Ind.i? lookbib.1 refer.1 roffbib.1
 
 mrproper: clean
+
+lookbib.1: lookbib.1.in
+	sed 's"/usr/ucblib/reftools/"$(ROOT)$(REFDIR)/"' lookbib.1.in > $@
+
+refer.1: refer.1.in
+	sed 's"/usr/ucblib/reftools/"$(ROOT)$(REFDIR)/"' refer.1.in > $@
+
+roffbib.1: roffbib.1.in
+	sed 's"/usr/ucblib/doctools/tmac/"$(ROOT)$(MACDIR)/"' roffbib.1.in > $@
 
 addbib.o: addbib.c
 deliv2.o: deliv2.c refer..c

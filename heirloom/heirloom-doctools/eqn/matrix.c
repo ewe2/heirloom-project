@@ -21,7 +21,14 @@
  * Sccsid @(#)matrix.c	1.4 (gritter) 10/29/05
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 #include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 column(int type, int p1) {
@@ -45,7 +52,7 @@ matrix(int p1) {
 	int hb, b;
 #endif	/* NEQN */
 	int nrow, ncol, i, j, k, val[100];
-	char *space;
+	const char *space;
 
 	space = "\\ \\ ";
 	nrow = lp[p1];	/* disaster if rows inconsistent */
@@ -77,21 +84,21 @@ matrix(int p1) {
 	j = p1;
 	for( i=0; i<ncol; i++ ) {
 		lpile(lp[j+lp[j]+1], j+1, j+lp[j]+1);
-		val[i] = yyval;
+		val[i] = yyval.token;
 		j += nrow + 2;
 	}
-	yyval = oalloc();
-	eht[yyval] = eht[val[0]];
-	ebase[yyval] = ebase[val[0]];
-	lfont[yyval] = rfont[yyval] = 0;
+	yyval.token = oalloc();
+	eht[yyval.token] = eht[val[0]];
+	ebase[yyval.token] = ebase[val[0]];
+	lfont[yyval.token] = rfont[yyval.token] = 0;
 #ifndef	NEQN
 	if(dbg)printf(".\tmatrix S%d: r=%d, c=%d, h=%g, b=%g\n",
-		yyval,nrow,ncol,eht[yyval],ebase[yyval]);
+		yyval.token,nrow,ncol,eht[yyval.token],ebase[yyval.token]);
 #else	/* NEQN */
 	if(dbg)printf(".\tmatrix S%d: r=%d, c=%d, h=%d, b=%d\n",
-		yyval,nrow,ncol,eht[yyval],ebase[yyval]);
+		yyval.token,nrow,ncol,eht[yyval.token],ebase[yyval.token]);
 #endif	/* NEQN */
-	printf(".ds %d \"", yyval);
+	printf(".ds %d \"", yyval.token);
 	for( i=0; i<ncol; i++ )  {
 		printf("\\*(%d%s", val[i], i==ncol-1 ? "" : space);
 		ofree(val[i]);

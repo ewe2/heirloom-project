@@ -21,7 +21,14 @@
  * Sccsid @(#)sqrt.c	1.6 (gritter) 1/13/08
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 # include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 sqrt(int p2) {
@@ -30,20 +37,20 @@ sqrt(int p2) {
 
 	nps = (int)(EFFPS(((eht[p2]*9)/10+(resolution/POINT-1))/(resolution/POINT)));
 #endif /* NEQN */
-	yyval = p2;
+	yyval.token = p2;
 #ifndef NEQN
-	eht[yyval] = VERT(EM(1.2, nps));
+	eht[yyval.token] = VERT(EM(1.2, nps));
 	if(dbg)printf(".\tsqrt: S%d <- S%d;b=%g, h=%g\n", 
-		yyval, p2, ebase[yyval], eht[yyval]);
-	if (ital(rfont[yyval]))
-		printf(".as %d \\|\n", yyval);
+		yyval.token, p2, ebase[yyval.token], eht[yyval.token]);
+	if (ital(rfont[yyval.token]))
+		printf(".as %d \\|\n", yyval.token);
 #endif /* NEQN */
 	nrwid(p2, ps, p2);
 #ifndef NEQN
 	printf(".ds %d \\v'%gp'\\s%s\\v'-.2m'\\(sr\\l'\\n(%du\\(rn'\\v'.2m'\\s%s", 
-		yyval, ebase[p2], tsize(nps), p2, tsize(ps));
+		yyval.token, ebase[p2], tsize(nps), p2, tsize(ps));
 	printf("\\v'%gp'\\h'-\\n(%du'\\*(%d\n", -ebase[p2], p2, p2);
-	lfont[yyval] = ROM;
+	lfont[yyval.token] = ROM;
 #else /* NEQN */
 	printf(".ds %d \\v'%du'\\e\\L'%du'\\l'\\n(%du'",
 		p2, ebase[p2], -eht[p2], p2);

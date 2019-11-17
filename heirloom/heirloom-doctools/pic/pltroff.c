@@ -14,32 +14,27 @@
 #include <math.h>
 #include <string.h>
 #include "pic.h"
+
 extern int dbg;
 
-#define	abs(n)	(n >= 0 ? n : -(n))
-#define	max(x,y)	((x)>(y) ? (x) : (y))
-
-char	*textshift = "\\v'.2m'";	/* move text this far down */
+static const char	*textshift = "\\v'.2m'";	/* move text this far down */
 
 /* scaling stuff defined by s command as X0,Y0 to X1,Y1 */
 /* output dimensions set by -l,-w options to 0,0 to hmax, vmax */
 /* default output is 6x6 inches */
 
 
-double	xscale;
-double	yscale;
+static double	xscale;
+static double	yscale;
 
-double	hpos	= 0;	/* current horizontal position in output coordinate system */
-double	vpos	= 0;	/* current vertical position; 0 is top of page */
+static double	hpos	= 0;	/* current horizontal position in output coordinate system */
+static double	vpos	= 0;	/* current vertical position; 0 is top of page */
 
-double	htrue	= 0;	/* where we really are */
-double	vtrue	= 0;
+static double	htrue	= 0;	/* where we really are */
+static double	vtrue	= 0;
 
-double	X0, Y0;		/* left bottom of input */
-double	X1, Y1;		/* right top of input */
-
-double	hmax;		/* right end of output */
-double	vmax;		/* top of output (down is positive) */
+static double	X0, Y0;		/* left bottom of input */
+static double	X1, Y1;		/* right top of input */
 
 extern	double	deltx;
 extern	double	delty;
@@ -116,6 +111,7 @@ double ysc(double y)	/* convert y from external to internal form, scaling only *
 
 void closepl(char *PEline)	/* clean up after finished */
 {
+	printf(".if n .do\n");
 	movehv(0.0, 0.0);	/* get back to where we started */
 	if (strchr(PEline, 'F') == NULL) {
 		printf(".sp 1+%.3fi\n", yconv(ymin));
@@ -154,11 +150,6 @@ void hgoto(double n)
 void vgoto(double n)
 {
 	vpos = n;
-}
-
-double fabs(double x)
-{
-	return x < 0 ? -x : x;
 }
 
 void hvflush(void)	/* get to proper point for output */
@@ -252,6 +243,7 @@ void arrow(double x0, double y0, double x1, double y1, double w, double h,
 	if (nhead < 2)
 		nhead = 2;
 	dprintf("rot=%g, hyp=%g, alpha=%g\n", rot, hyp, alpha);
+	printf(".if t \\{\\\n");
 	for (i = nhead-1; i >= 0; i--) {
 		drot = 2 * rot / (double) (nhead-1) * (double) i;
 		dx = hyp * cos(alpha + PI - rot + drot);
@@ -259,9 +251,10 @@ void arrow(double x0, double y0, double x1, double y1, double w, double h,
 		dprintf("dx,dy = %g,%g\n", dx, dy);
 		line(x1+dx, y1+dy, x1, y1);
 	}
+	printf(".\\}\n");
 }
 
-double lastgray = 0;
+static double lastgray = 0;
 
 void fillstart(double v)	/* this works only for postscript, obviously. */
 {				/* uses drechsler's dpost conventions... */
@@ -271,7 +264,7 @@ void fillstart(double v)	/* this works only for postscript, obviously. */
 	flyback();
 }
 
-void fillend(int vis, int fill)
+void fillend(int vis, int fill __unused)
 {
 	hvflush();
 	printf("\\X'EndObject gsave eofill grestore %g setgray %s'\n",
@@ -295,13 +288,20 @@ void cont(double x, double y)	/* continue line from here to x,y */
 {
 	double h1, v1;
 	double dh, dv;
+	int rh = 0;
 
 	h1 = xconv(x);
 	v1 = yconv(y);
 	dh = h1 - hpos;
 	dv = v1 - vpos;
+	if (dh > 0 && !dv) {
+		rh = 1;
+		move(x, y);
+		dh = -dh;
+	}
 	hvflush();
 	printf("\\D'l%.3fi %.3fi'\n", dh, dv);
+	if (rh) move(x, y);
 	flyback();	/* expensive */
 	hpos = h1;
 	vpos = v1;
@@ -315,7 +315,7 @@ void circle(double x, double y, double r)
 	flyback();
 }
 
-void spline(double x, double y, double n, ofloat *p, int dashed, double ddval)
+void spline(double x, double y, double n, ofloat *p, int dashed __unused, double ddval __unused)
 {
 	int i;
 	double dx, dy;
@@ -344,7 +344,7 @@ void ellipse(double x, double y, double r1, double r2)
 	hvflush();
 	ir1 = xsc(r1);
 	ir2 = ysc(r2);
-	printf("\\D'e%.3fi %.3fi'\n", 2 * ir1, 2 * abs(ir2));
+	printf("\\D'e%.3fi %.3fi'\n", 2 * ir1, 2 * fabs(ir2));
 	flyback();
 }
 

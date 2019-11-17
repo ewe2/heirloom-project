@@ -21,12 +21,19 @@
  * Sccsid @(#)font.c	1.5 (gritter) 1/13/08
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 # include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 setfont(char ch1) {
 	/* use number '1', '2', '3' for roman, italic, bold */
-	yyval = ft;
+	yyval.token = ft;
 	if (ch1 == 'r' || ch1 == 'R')
 		ft = ROM;
 	else if (ch1 == 'i' || ch1 == 'I')
@@ -46,27 +53,24 @@ setfont(char ch1) {
 void
 font(int p1, int p2) {
 		/* old font in p1, new in ft */
-	yyval = p2;
-	lfont[yyval] = rfont[yyval] = ital(ft) ? ITAL : ROM;
+	yyval.token = p2;
+	lfont[yyval.token] = rfont[yyval.token] = ital(ft) ? ITAL : ROM;
 #ifndef	NEQN
 	if(dbg)printf(".\tb:fb: S%d <- \\f%c S%d \\f%c b=%g,h=%g,lf=%c,rf=%c\n", 
-		yyval, ft, p2, p1, ebase[yyval], eht[yyval], lfont[yyval], rfont[yyval]);
+		yyval.token, ft, p2, p1, ebase[yyval.token], eht[yyval.token], lfont[yyval.token], rfont[yyval.token]);
 #else	/* NEQN */
 	if(dbg)printf(".\tb:fb: S%d <- \\f%c S%d \\f%c b=%d,h=%d,lf=%c,rf=%c\n", 
-		yyval, ft, p2, p1, ebase[yyval], eht[yyval], lfont[yyval], rfont[yyval]);
+		yyval.token, ft, p2, p1, ebase[yyval.token], eht[yyval.token], lfont[yyval.token], rfont[yyval.token]);
 #endif	/* NEQN */
 	printf(".ds %d \\f%c\\*(%d\\f%c\n", 
-		yyval, ft, p2, p1);
+		yyval.token, ft, p2, p1);
 	ft = p1;
 	printf(".ft %c\n", ft);
 }
 
 void
 fatbox(int p) {
-	int sh;
-
-	yyval = p;
-	sh = ps / 4;
+	yyval.token = p;
 	nrwid(p, ps, p);
 	printf(".ds %d \\*(%d\\h'-\\n(%du+0.05m'\\*(%d\n", p, p, p, p);
 	if(dbg)printf(".\tfat %d, sh=0.05m\n", p);
@@ -77,7 +81,7 @@ globfont(void) {
 	char temp[20];
 
 	getstr(temp, 20);
-	yyval = eqnreg = 0;
+	yyval.token = eqnreg = 0;
 	gfont = temp[0];
 	switch (gfont) {
 	case 'r': case 'R':

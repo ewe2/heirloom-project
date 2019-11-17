@@ -1,12 +1,12 @@
 #
 # A BSD-compatible install command.
 #
-INSTALL=/usr/ucb/install
+INSTALL=install
 
 #
 # Packaging prefix.
 #
-PREFIX=/usr
+PREFIX=/usr/local
 
 #
 # Where to place binaries.
@@ -26,7 +26,7 @@ PUBDIR=$(PREFIX)/pub
 #
 # Where to place manual pages.
 #
-MANDIR=$(PREFIX)/share/man/5man
+MANDIR=$(PREFIX)/share/heirloom-doctools/man
 
 #
 # Where to place the troff macro packages.
@@ -68,22 +68,22 @@ EUC=-DEUC
 #
 # Binaries are stripped with this command after installation.
 #
-STRIP=strip -s -R .comment -R .note
+STRIP=strip
 
 #
 # The C compiler.
 #
-CC=cc
+#CC=
 
 #
 # The C++ compiler.
 #
-CCC=c++
+#CXX=
 
 #
 # Compiler flags.
 #
-CFLAGS=-O
+_CFLAGS=$(CFLAGS) $(_CPPFLAGS) $(__CDBG) $(__CLDBG)
 
 #
 # C preprocessor flags.
@@ -91,86 +91,74 @@ CFLAGS=-O
 # Use -D_GNU_SOURCE for Linux with GNU libc.
 # Use -D_INCLUDE__STDC_A1_SOURCE for HP-UX.
 #
-CPPFLAGS=-D_GNU_SOURCE
-
-#
-# Warning flags for the compiler.
-#
-#WARN=
+_CPPFLAGS=$(CPPFLAGS) -D_GNU_SOURCE
 
 #
 # Linker flags.
 #
-LDFLAGS=
+_LDFLAGS=$(LDFLAGS) $(__CLDBG)
 
 #
 # Additional libraries to link with.
 #
-LIBS=
+#LIBS=
 
 #
 # A Bourne-compatible shell.
 #
-SHELL=/home/ewe2/bin/heirloom-sh
-
-#
-# Run ranlib if it is in the current path. This should take care
-# of most situations. On Mac OS X, you need to uncomment "ranlib -c".
-#
-RANLIB=(hash ranlib) >/dev/null 2>&1 || exit 0; ranlib
-#RANLIB=ranlib -c
+SHELL=/bin/sh
+RELEASE = Git snapshot 190405
+#RELEASE = release 160308
 VPATH=..
 OBJ = diacrit.o e.o eqnbox.o font.o fromto.o funny.o glob.o integral.o \
 	io.o lex.o lookup.o mark.o matrix.o move.o over.o paren.o pile.o \
 	shift.o size.o sqrt.o text.o version.o
 
-FLAGS = -I. -I.. -DNEQN
+FLAGS = -I. -I.. -I../../include -DNEQN $(DEFINES)
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(CPPFLAGS) $(FLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
 all: neqn
 
 neqn: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o neqn
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(OBJ) $(LIBS) -o neqn
 
 e.c: e.y
 	$(YACC) -d ../e.y
 	sed -f ../yyval.sed <y.tab.c >$@
-	rm y.tab.c
-	mv -f y.tab.h e.def
 
-e.def: e.c
+y.tab.h: e.c
 
 install:
 	$(INSTALL) -c neqn $(ROOT)$(BINDIR)/neqn
 	$(STRIP) $(ROOT)$(BINDIR)/neqn
-	rm -f $(ROOT)$(MANDIR)/man1b/neqn.1b
-	ln -s eqn.1b $(ROOT)$(MANDIR)/man1b/neqn.1b
+	rm -f $(ROOT)$(MANDIR)/man1/neqn.1
+	ln -s eqn.1 $(ROOT)$(MANDIR)/man1/neqn.1
 
 clean:
-	rm -f $(OBJ) neqn e.c e.def core log *~
+	rm -f $(OBJ) neqn e.c y.tab.* core log *~
 
 mrproper: clean
 
-diacrit.o: ../diacrit.c ../e.h e.def
-eqnbox.o: ../eqnbox.c ../e.h
-font.o: ../font.c ../e.h
-fromto.o: ../fromto.c ../e.h
-funny.o: ../funny.c ../e.h e.def
+diacrit.o: ../diacrit.c ../e.h y.tab.h
+eqnbox.o: ../eqnbox.c ../e.h y.tab.h
+font.o: ../font.c ../e.h y.tab.h
+fromto.o: ../fromto.c ../e.h y.tab.h
+funny.o: ../funny.c ../e.h y.tab.h
 glob.o: ../glob.c ../e.h
-integral.o: ../integral.c ../e.h e.def
+integral.o: ../integral.c ../e.h y.tab.h
 io.o: ../io.c ../e.h
-lex.o: ../lex.c ../e.h e.def
-lookup.o: ../lookup.c ../e.h e.def
-mark.o: ../mark.c ../e.h
-matrix.o: ../matrix.c ../e.h
-move.o: ../move.c ../e.h e.def
-over.o: ../over.c ../e.h
-paren.o: ../paren.c ../e.h
-pile.o: ../pile.c ../e.h
-shift.o: ../shift.c ../e.h e.def
-size.o: ../size.c ../e.h
-sqrt.o: ../sqrt.c ../e.h
-text.o: ../text.c ../e.h e.def
+lex.o: ../lex.c ../e.h y.tab.h
+lookup.o: ../lookup.c ../e.h y.tab.h
+mark.o: ../mark.c ../e.h y.tab.h
+matrix.o: ../matrix.c ../e.h y.tab.h
+move.o: ../move.c ../e.h y.tab.h
+over.o: ../over.c ../e.h y.tab.h
+paren.o: ../paren.c ../e.h y.tab.h
+pile.o: ../pile.c ../e.h y.tab.h
+shift.o: ../shift.c ../e.h y.tab.h
+size.o: ../size.c ../e.h y.tab.h
+sqrt.o: ../sqrt.c ../e.h y.tab.h
+text.o: ../text.c ../e.h y.tab.h
 e.o: e.c ../e.h

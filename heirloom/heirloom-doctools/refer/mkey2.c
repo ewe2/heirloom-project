@@ -32,8 +32,10 @@ static long lp, lim;
 static int alph, used, prevc;
 static char *p, key[20];
 
+void chkey(int c, const char *name);
+
 void
-dofile(FILE *f, char *name)
+dofile(FILE *f, const char *name)
 {
 	/* read file f & spit out keys & ptrs */
 
@@ -45,7 +47,7 @@ dofile(FILE *f, char *name)
 
 	lp=0;
 	if (wholefile==0)
-		while (lim = grec(line,f))
+		while ((lim = grec(line,f)))
 		{
 # if D1
 			fprintf(stderr, "line: /%s",line);
@@ -80,7 +82,7 @@ outkey(char *ky, int lead, int trail)
 		if (trail == '.') return(0);
 		if (mindex(".%,!#$%&'();+:*", lead)!=0) return(0);
 	}
-	if (isdigit(ky[0]))
+	if (isdigit((int)ky[0]))
 		/* Allow years 1000 - 2099 */
 		if (!(ky[0] == '1' || (ky[0] == '2' && ky[1] == '0')) || n != 4)
 			return(0);
@@ -105,7 +107,7 @@ grec (char *s, FILE *f)
 		if (tm[0] == '%' || tm[0] == '.')
 			curtype = tm[1];
 		if (tlen < MAXLINE && mindex(iglist,curtype)==0)
-			strcat(s, tm);
+			n_strcat(s, tm, MAXLINE);
 		len = tlen;
 		if (wholefile==0 && tm[0] == '\n')
 			return(len);
@@ -122,15 +124,15 @@ grec (char *s, FILE *f)
 char *
 trimnl(char *ln)
 {
-	register char *p = ln;
-	while (*p) p++;
-	p--;
-	if (*p == '\n') *p=0;
+	register char *ptr = ln;
+	while (*ptr) ptr++;
+	ptr--;
+	if (*ptr == '\n') *ptr=0;
 	return(ln);
 }
 
 void
-chkey (int c, char *name)
+chkey(int c, const char *name)
 {
 	extern int labels;
 	extern int wholefile;

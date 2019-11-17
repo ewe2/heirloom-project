@@ -21,8 +21,8 @@
  * Sccsid @(#)diacrit.c	1.7 (gritter) 1/13/08
  */
 
-# include "e.h"
-# include "e.def"
+#include "e.h"
+#include "y.tab.h"
 
 void
 diacrit(int p1, int type) {
@@ -35,7 +35,7 @@ diacrit(int p1, int type) {
 	t = oalloc();
 #ifdef NEQN
 	nrwid(p1, ps, p1);
-	printf(".nr 10 %gu\n", max(eht[p1]-ebase[p1]-VERT(2),0));
+	printf(".nr 10 %gu\n", (float)max(eht[p1]-ebase[p1]-VERT(2),0));
 #else /* NEQN */
 	effps = EFFPS(ps);
 	nrwid(p1, effps, p1);
@@ -63,10 +63,18 @@ diacrit(int p1, int type) {
 #endif /* !NEQN */
 			break;
 		case HAT:
-			printf(".ds %d ^\n", c);
+#ifdef NEQN
+			printf(".ds %d ^\n", c); /* \[asciicircum] */
+#else
+			printf(".ds %d \\[circumflex]\n", c);
+#endif
 			break;
 		case TILDE:
-			printf(".ds %d ~\n", c);
+#ifdef NEQN
+			printf(".ds %d ~\n", c); /* \[asciitilde] */
+#else
+			printf(".ds %d \\[tilde]\n", c);
+#endif
 			break;
 		case DOT:
 #ifndef NEQN

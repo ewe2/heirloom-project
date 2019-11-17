@@ -115,7 +115,7 @@
 
 #include "gen.h"			/* general purpose definitions */
 #include "ext.h"			/* external variable definitions */
-
+#include "global.h"		/* global heirloom doctools definitions */
 
 #define DEFAULTCOLOR	"black"
 
@@ -181,7 +181,7 @@ newcolor (
 
 
     char	*p;			/* next character in *name */
-    int		i;			/* goes in color[i] */
+    size_t	i;			/* goes in color[i] */
 
 
 /*
@@ -198,12 +198,12 @@ newcolor (
     for ( p = name; *p && (*p == ' ' || *p == ':'); p++ ) ;
 
     for ( i = 0; i < sizeof(color) - 1 && *p != '\n' && *p; i++, p++ )
-	if ( isupper(*p) )
-	    color[i] = tolower(*p);
+	if ( isupper((int)*p) )
+	    color[i] = tolower((int)*p);
 	else color[i] = *p;
 
     if ( i == 0 )
-	strcpy(color, DEFAULTCOLOR);
+	n_strcpy(color, DEFAULTCOLOR, sizeof(color));
     else color[i] = '\0';
 
     if ( strcmp(color, DEFAULTCOLOR) != 0 )
@@ -246,7 +246,7 @@ setcolor(void)
 	lastend = -1;
 	newencoding = realencoding;
 
-	if ( islower(color[0]) == 0 )		/* explicit rgb, hsb, or cmyk request */
+	if ( islower((int)color[0]) == 0 )		/* explicit rgb, hsb, or cmyk request */
 	    fprintf(tf, "%s\n", color);
 	else {
 	    putc('/', tf);

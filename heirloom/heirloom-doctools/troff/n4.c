@@ -46,6 +46,8 @@
  * contributors.
  */
 
+#include	<stddef.h>
+#include	<stdio.h>
 #include	<stdlib.h>
 #include	<string.h>
 #include	<ctype.h>
@@ -65,10 +67,10 @@
  */
 
 
-int	regcnt = NNAMES;
+static int	regcnt = NNAMES;
 int	falsef	= 0;	/* on if inside false branch of if */
 #define	NHASH(i)	((i>>6)^i)&0177
-struct	numtab	**nhash;	/* size must be 128 == the 0177 on line above */
+static struct	numtab	**nhash;	/* size must be 128 == the 0177 on line above */
 
 static void	nrehash(struct numtab *, int, struct numtab **);
 static struct numtab	*_findr(register int i, int, int, int, int *);
@@ -77,11 +79,13 @@ static struct acc	_atoi0(int);
 static struct acc	ckph(int);
 static struct acc	atoi1(tchar, int);
 static struct acc	_inumb(int *, float *, int, int *);
+static void	print_tab_setting(char *, size_t);
 
 static void *
 _grownumtab(struct numtab **numtp, int *NNp, struct numtab ***hashp)
 {
-	int	i, j, inc = 20;
+	int	i, inc = 20;
+	ptrdiff_t	j;
 	struct numtab	*onc;
 
 	onc = *numtp;
@@ -116,6 +120,30 @@ grownumtab(void)
 	return _grownumtab(&numtab, &NN, &nhash);
 }
 
+static void
+print_tab_setting(char *tb, size_t siz) {
+	char *cp;
+	int i;
+	for (i = 0; tabtab[i]; i++);
+	while (--i >= 0) {
+		cp = tb;
+		if (i)
+			*cp++ = ' ';
+		cp = roff_sprintf(cp, siz - (cp - tb), "%d", tabtab[i]&TABMASK);
+		*cp++ = 'u';
+		switch (tabtab[i] & ~TABMASK) {
+		case RTAB:
+			*cp++ = 'R';
+			break;
+		case CTAB:
+			*cp++ = 'C';
+			break;
+		}
+		*cp = 0;
+		cpushback(tb);
+	}
+}
+
 #define	TMYES	if (tm) return(1)
 #define	TMNO	if (tm) return(0)
 
@@ -137,12 +165,14 @@ _setn(int tm)	/* tm: test for presence of readonly register */
 		i = tm;
 		goto sl;
 	}
+	noschr++;
 	if ((i = cbits(ii = getach())) == '+')
 		f = 1;
 	else if (i == '-')
 		f = -1;
 	else 
 		ch = ii;
+	if (noschr) noschr--;
 	if (falsef)
 		f = 0;
 	if ((i = getsn(1)) == 0)
@@ -268,6 +298,10 @@ sl:
 			TMYES;
 			cpushback(cfname[ifi] ? cfname[ifi] : "");
 			return(0);
+		case 'S':
+			TMYES;
+			print_tab_setting(tb, sizeof(tb));
+			return(0);
 		case 'X':
 			if (xflag) {
 				i = xflag;
@@ -277,7 +311,7 @@ sl:
 		case 'Y':
 			if (xflag) {
 				TMYES;
-				cpushback((char *)revision);
+				cpushback(revision);
 				return(0);
 			}
 			/*FALLTHRU*/
@@ -430,11 +464,21 @@ sl:
 		} else if (strcmp(&name[1], "hylen") == 0) {
 			i = hylen;
 		} else if (strcmp(&name[1], "hypp") == 0) {
-			i = hypp;
+			i = fl = hypp / PENALSCALE ;
+			if (i != fl)
+				goto flt;
 		} else if (strcmp(&name[1], "hypp2") == 0) {
-			i = hypp2;
+			i = fl = hypp2 / PENALSCALE ;
+			if (i != fl)
+				goto flt;
 		} else if (strcmp(&name[1], "hypp3") == 0) {
-			i = hypp3;
+			i = fl = hypp3 / PENALSCALE ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "hypp4") == 0) {
+			i = fl = hypp4 / PENALSCALE ;
+			if (i != fl)
+				goto flt;
 		} else if (strcmp(&name[1], "padj") == 0) {
 			i = padj;
 		} else if (strcmp(&name[1], "ev") == 0) {
@@ -448,24 +492,7 @@ sl:
 #endif	/* NROFF */
 		} else if (strcmp(&name[1], "tabs") == 0) {
 			TMYES;
-			for (i = 0; tabtab[i]; i++);
-			while (--i >= 0) {
-				cp = tb;
-				if (i)
-					*cp++ = ' ';
-				cp = roff_sprintf(cp, "%d", tabtab[i]&TABMASK);
-				*cp++ = 'u';
-				switch (tabtab[i] & ~TABMASK) {
-				case RTAB:
-					*cp++ = 'R';
-					break;
-				case CTAB:
-					*cp++ = 'C';
-					break;
-				}
-				*cp = 0;
-				cpushback(tb);
-			}
+			print_tab_setting(tb, sizeof(tb));
 			return(0);
 		} else if (strcmp(&name[1], "lpfx") == 0) {
 			TMYES;
@@ -509,9 +536,127 @@ sl:
 			i = dilev;
 		else if (strcmp(&name[1], "defpenalty") == 0)
 			i = dpenal ? dpenal - INFPENALTY0 - 1 : 0;
-		else
+		else if (strcmp(&name[1], "ns") == 0)
+			i = dip->nls;
+		else if (strcmp(&name[1], "adjlapenalty") == 0) {
+			i = fl = adjlapenalty * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "adjlathreshold") == 0) {
+			i = fl = adjlathreshold * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "adjpenalty") == 0) {
+			i = fl = adjpenalty * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "adjthreshold") == 0) {
+			i = fl = adjthreshold * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "adjthreshupr") == 0) {
+			i = fl = adjthreshupr * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "elpchar") == 0) {
+			TMYES;
+			if (elpch[0] == IMP)
+				/*EMPTY*/;
+			else if (elpch[0] == 0)
+				cpushback(".,;:!?\'\")]}") ;
+			else {
+				tchar	tc[NSENT+1];
+				for (i = 0; elpch[i] && i < NSENT; i++)
+					tc[i] = elpch[i];
+				tc[i] = 0;
+				pushback(tc);
+			}
+			return(0);
+		} else if (strcmp(&name[1], "elppen") == 0) {
+			i = fl = elppen * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "exhyp") == 0) {
+			i = fl = exhyp * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "lastlinestretch") == 0) {
+			i = lastlinestretch ;
+		} else if (strcmp(&name[1], "letcalc") == 0) {
+			i = letcalc ;
+		} else if (strcmp(&name[1], "letpen") == 0) {
+			i = letpen ;
+		} else if (strcmp(&name[1], "letpenlwr") == 0) {
+			i = fl = letpenlwr * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "letpenupr") == 0) {
+			i = fl = letpenupr * 100.0 ;
+			if (i != fl)
+				goto flt ;
+		} else if (strcmp(&name[1], "letstren") == 0) {
+			i = fl = letstren * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "letthreshlwr") == 0) {
+			i = fl = letthreshlwr * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "letthreshupr") == 0) {
+			i = fl = letthreshupr * 100.0 ;
+			if (i != fl)
+				goto flt ;
+		} else if (strcmp(&name[1], "linepenalty") == 0) {
+			i = fl = linepenalty * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "looseness") == 0) {
+			i = looseness ;
+		} else if (strcmp(&name[1], "overrunmin") == 0) {
+			i = overrunmin ;
+		} else if (strcmp(&name[1], "overrunpenalty") == 0) {
+			i = fl = overrunpenalty * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "overrunthreshold") == 0) {
+			i = fl = overrunthreshold * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "rhanglevel") == 0) {
+			i = rhanglevel ;
+		} else if (strcmp(&name[1], "wsupr") == 0) {
+			i = fl = wsupr * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "wslwr") == 0) {
+			i = fl = wslwr * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "wsmin") == 0) {
+			i = fl = wsmin * 100.0;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "wscalc") == 0) {
+			i = wscalc ;
+		} else if (strcmp(&name[1], "wsmark") == 0) {
+			i = wsmark ;
+		} else if (strcmp(&name[1], "wswarn") == 0) {
+			i = wswarn ;
+		} else if (strcmp(&name[1], "wswarnlwr") == 0) {
+			i = fl = wswarnlwr * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else if (strcmp(&name[1], "wswarnupr") == 0) {
+			i = fl = wswarnupr * 100.0 ;
+			if (i != fl)
+				goto flt;
+		} else
 			goto s0;
-	} else {
+	} else if (strcmp(name, "lss") == 0)
+		i = glss;
+	else if (strcmp(name, "lsn") == 0)
+		i = lsn;
+	else {
 s0:
 		TMNO;
 		if ((numtp = _findr(i, 1, 2, 0, &j)) == NULL) {
@@ -537,7 +682,7 @@ s0:
 	return(0);
 flt:
 	TMYES;
-	roff_sprintf(tb, "%g", fl);
+	roff_sprintf(tb, sizeof(tb), "%g", fl);
 	cpushback(tb);
 	return(0);
 }
@@ -548,8 +693,8 @@ setn(void)
 	_setn(0);
 }
 
-tchar	numbuf[17];
-tchar	*numbufp;
+static tchar	numbuf[17];
+static tchar	*numbufp;
 
 int 
 wrc(tchar i)
@@ -775,7 +920,7 @@ roman(int i, int (*f)(tchar))
 
 
 int 
-roman0(int i, int (*f)(tchar), char *onesp, char *fivesp)
+roman0(int i, int (*f)(tchar), const char *onesp, const char *fivesp)
 {
 	register int q, rem, k;
 
@@ -817,7 +962,7 @@ abc0(int i, int (*f)(tchar))
 	register int j, k;
 
 	k = 0;
-	if (j = i / 26)
+	if ((j = i / 26))
 		k = abc0(j - 1, f);
 	return(k + (*f)((i % 26 + nform) | nrbits));
 }
@@ -842,7 +987,7 @@ agetch(void)
 }
 
 int
-atoi(void)
+hatoi(void)
 {
 	struct acc	a;
 
@@ -894,14 +1039,14 @@ _atoi(int flt)
 			nonumb = 1;
 	}
 	if (flt) {
-		if (!nonumb && (n.f<0 && n.f<-FLT_MAX || n.f>0 && n.f>FLT_MAX)) {
+		if (!nonumb && ((n.f<0 && n.f<-FLT_MAX) || (n.f>0 && n.f>FLT_MAX))) {
 			if (warn & WARN_NUMBER)
 				errprint("floating-point arithmetic overflow");
 			if (xflag)
 				nonumb = 1;
 		}
 	} else {
-		if (!nonumb && (n.n<0 && n.n <INT_MIN || n.n>0 && n.n>INT_MAX)) {
+		if (!nonumb && ((n.n<0 && n.n <INT_MIN) || (n.n>0 && n.n>INT_MAX))) {
 			if (warn & WARN_NUMBER)
 				errprint("arithmetic overflow");
 			if (xflag)
@@ -942,6 +1087,7 @@ _atoi0(int flt)
 	register tchar ii;
 	struct acc	i, acc;
 
+	noschr++;
 	i.f = i.n = 0; 
 	acc.f = acc.n = 0;
 	nonumb = 0;
@@ -980,7 +1126,7 @@ a0:
 		i = ckph(flt);
 		if (nonumb)
 			break;
-		if (!flt && i.n == 0 || flt && i.f == 0) {
+		if ((!flt && i.n == 0) || (flt && i.f == 0)) {
 			flusho();
 			errprint("divide by zero.");
 			acc.n = 0;
@@ -1121,6 +1267,7 @@ a0:
 		acc = _atoi0(flt);
 		goto a0;
 	}
+	if (noschr) noschr--;
 	return(acc);
 }
 
@@ -1145,6 +1292,7 @@ static struct acc
 atoi1(register tchar ii, int flt)
 {
 	register int i, j, digits;
+	int	digit = 0;
 	struct acc	acc;
 	int	neg, abs, field;
 	int	_noscale = 0, scale;
@@ -1184,6 +1332,7 @@ a1:
 	while (i >= '0' && i <= '9') {
 		field++;
 		digits++;
+		digit = 1;
 		if (!flt)
 			acc.n = 10 * acc.n + i - '0';
 		else if (field == digits)
@@ -1317,7 +1466,7 @@ a1:
 			ch = ii;
 			goto a2;
 		}
-		if ((i >= 'a' && i <= 'z' || i >= 'A' && i <= 'Z') &&
+		if (((i >= 'a' && i <= 'z') || (i >= 'A' && i <= 'Z')) &&
 				warn & WARN_SCALE) {
 			errprint("undefined scale indicator %c", i);
 			illscale = 1;
@@ -1328,11 +1477,11 @@ a1:
 		i = dfactd;
 	}
 	if (!field) {
-		tchar	t, tp[2];
-		int	f, d, n;
-		t = getch();
-		if (cbits(t) != ';') {
-			tp[0] = t;
+		tchar	_t, tp[2];
+		int	_f, _d, n;
+		_t = getch();
+		if (cbits(_t) != ';') {
+			tp[0] = _t;
 			tp[1] = 0;
 			pushback(tp);
 			ch = ii;
@@ -1340,15 +1489,15 @@ a1:
 		}
 	newscale:
 		/* (c;e) */
-		f = dfact;
-		d = dfactd;
+		_f = dfact;
+		_d = dfactd;
 		n = noscale;
 		dfact = j;
 		dfactd = i;
 		noscale = _noscale;
 		acc = _atoi0(flt);
-		dfact = f;
-		dfactd = d;
+		dfact = _f;
+		dfactd = _d;
 		noscale = n;
 		return(acc);
 	}
@@ -1385,7 +1534,7 @@ aa:
 		if (flt) acc.f -= j;
 	}
 a2:
-	nonumb = !field;
+	nonumb = !field || !digit;
 	if (empty)
 		empty = !field;
 	return(acc);
@@ -1547,7 +1696,7 @@ casnr1(int flt, int local)
 	a = _inumb(&numtp->val, flt ? &numtp->fval : NULL, flt, NULL);
 	if (nonumb)
 		goto rtn;
-	numtp = _findr(rq, 0, 1, local, NULL);
+	if (rq == PAIR('.', 'g')) gemu = xflag && a.n == 1 ? 1 : 0;
 	numtp->val = a.n;
 	if (flt) {
 		numtp->fval = a.f;
@@ -1561,7 +1710,7 @@ casnr1(int flt, int local)
 	 * now to avoid a warning because of an illegal number.
 	 */
 	j = cbits(ch);
-	if ((j >= 'a' && j <= 'z' || j >= 'A' && j <= 'Z') &&
+	if (((j >= 'a' && j <= 'z') || (j >= 'A' && j <= 'Z')) &&
 			warn & WARN_SCALE)
 		goto rtns;
 	skip(0);
@@ -1634,7 +1783,7 @@ caseaf(void)
 	if (numtp->flags & FLAG_WATCH) {
 		char	b[40];
 		int	x;
-		if (k & BYTEMASK > ' ') {
+		if ((k & BYTEMASK) > ' ') {
 			b[0] = k & BYTEMASK;
 			b[1] = 0;
 		} else {
@@ -1755,7 +1904,7 @@ caseunwatchn(void)
 void
 prwatchn(struct numtab *numtp)
 {
-	char	*local;
+	const char	*local;
 
 	if (numtp == NULL)
 		return;
@@ -1828,12 +1977,14 @@ _inumb(int *n, float *fp, int flt, int *relative)
 		nv = *n;
 		if (fp)
 			fv = *fp;
+		noschr++;
 		if ((j = cbits(ii = getch())) == '+')
 			f = 1;
 		else if (j == '-')
 			f = -1;
 		else 
 			ch = ii;
+		if (noschr) noschr--;
 	}
 	i = _atoi(flt);
 	lgf--;
@@ -1857,18 +2008,18 @@ _inumb(int *n, float *fp, int flt, int *relative)
 float
 atop(void)
 {
-	float	t;
+	float	_t;
 
 	noscale++;
-	t = atof();
+	_t = atof();
 	noscale--;
-	if (t < -INFPENALTY)
-		t = -INFPENALTY;
-	else if (t > INFPENALTY)
-		t = INFPENALTY;
+	if (_t < -INFPENALTY)
+		_t = -INFPENALTY;
+	else if (_t > INFPENALTY)
+		_t = INFPENALTY;
 	else
-		t *= PENALSCALE;
-	return t;
+		_t *= PENALSCALE;
+	return _t;
 }
 
 
@@ -1894,7 +2045,7 @@ quant(int n, int m)
 
 
 tchar
-moflo(int n)
+moflo(int n __unused)
 {
 	if (warn & WARN_RANGE)
 		errprint("value too large for motion");

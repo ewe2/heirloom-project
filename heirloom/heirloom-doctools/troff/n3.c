@@ -37,6 +37,9 @@
  */
 
 /*
+ * Changes Copyright (c) 2014 Steffen Nurpmeso
+ */
+/*
  * University Copyright- Copyright (c) 1982, 1986, 1988
  * The Regents of the University of California
  * All Rights Reserved
@@ -53,6 +56,8 @@
  */
 
 
+#include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
@@ -65,14 +70,14 @@
 #include <unistd.h>
 
 #define	MHASH(x)	((x>>6)^x)&0177
-struct	contab **mhash;	/* size must be 128 == the 0177 on line above */
+static struct	contab **mhash;	/* size must be 128 == the 0177 on line above */
 #define	blisti(i)	(((i)-ENV_BLK*BLK) / BLK)
-filep	*blist;
-int	nblist;
-int	pagech = '%';
-int	strflg;
+static filep	*blist;
+static int	nblist;
+static int	pagech = '%';
+static int	strflg;
 
-tchar *wbuf;
+static tchar *wbuf;
 tchar *corebuf;
 
 struct contab	*oldmn;
@@ -91,12 +96,14 @@ static void	caseindex(void);
 static void	caseasciify(void);
 static void	caseunformat(int);
 static int	getls(int, int *, int);
-static void	addcon(int, char *, void(*)(int));
+static void	addcon(int, const char *, void(*)(int));
 
 static const struct {
-	char	*n;
+	const char	*n;
 	void	(*f)(int);
 } longrequests[] = {
+	{ "adjletpen",		(void(*)(int))caseadjlapenalty },
+	{ "adjpenalty",		(void(*)(int))caseadjpenalty },
 	{ "aln",		(void(*)(int))casealn },
 	{ "als",		(void(*)(int))caseals },
 	{ "asciify",		(void(*)(int))caseasciify },
@@ -110,6 +117,7 @@ static const struct {
 	{ "breakchar",		(void(*)(int))casebreakchar },
 	{ "brp",		(void(*)(int))casebrp },
 	{ "char",		(void(*)(int))casechar },
+	{ "chomp",		(void(*)(int))casechomp },
 	{ "chop",		(void(*)(int))casechop },
 	{ "close",		(void(*)(int))caseclose },
 	{ "connectchar",	(void(*)(int))caseconnectchar },
@@ -119,8 +127,13 @@ static const struct {
 	{ "dwh",		(void(*)(int))casedwh },
 	{ "ecs",		(void(*)(int))caseecs },
 	{ "ecr",		(void(*)(int))caseecr },
+	{ "elppen",		(void(*)(int))caseelppen },
+	{ "elpchar",		(void(*)(int))caseelpchar },
 	{ "errprint",		(void(*)(int))caseerrprint },
+	{ "escoff",		(void(*)(int))caseescoff },
+	{ "escon",		(void(*)(int))caseescon },
 	{ "evc",		(void(*)(int))caseevc },
+	{ "exhyp",		(void(*)(int))caseexhyp },
 	{ "fallback",		(void(*)(int))casefallback },
 	{ "fchar",		(void(*)(int))casefchar },
 	{ "fdeferlig",		(void(*)(int))casefdeferlig },
@@ -143,14 +156,24 @@ static const struct {
 	{ "kernafter",		(void(*)(int))casekernafter },
 	{ "kernbefore",		(void(*)(int))casekernbefore },
 	{ "kernpair",		(void(*)(int))casekernpair },
+	{ "lastlinestretch",	(void(*)(int))caselastlinestretch },
 	{ "lc_ctype",		(void(*)(int))caselc_ctype },
 	{ "lds",		(void(*)(int))caselds },
 	{ "length",		(void(*)(int))caselength },
 	{ "letadj",		(void(*)(int))caseletadj },
+	{ "letcalc",		(void(*)(int))caseletcalc },
+	{ "letpen",		(void(*)(int))caseletpen },
+	{ "letshp",		(void(*)(int))caseletshp },
+	{ "letspc",		(void(*)(int))caseletspc },
+	{ "letstren",		(void(*)(int))caseletstren },
+	{ "letthresh",		(void(*)(int))caseletthresh },
 	{ "lhang",		(void(*)(int))caselhang },
+	{ "linepenalty",	(void(*)(int))caselinepenalty },
 	{ "lnr",		(void(*)(int))caselnr },
 	{ "lnrf",		(void(*)(int))caselnrf },
+	{ "looseness",		(void(*)(int))caselooseness },
 	{ "lpfx",		(void(*)(int))caselpfx },
+	{ "lsm",		(void(*)(int))caselsm },
 	{ "mediasize",		(void(*)(int))casemediasize },
 	{ "minss",		(void(*)(int))caseminss },
 	{ "nhychar",		(void(*)(int))casenhychar },
@@ -159,6 +182,7 @@ static const struct {
 	{ "open",		(void(*)(int))caseopen },
 	{ "opena",		(void(*)(int))caseopena },
 	{ "output",		(void(*)(int))caseoutput },
+	{ "overrunpenalty",	(void(*)(int))caseoverrunpenalty },
 	{ "padj",		(void(*)(int))casepadj },
 	{ "papersize",		(void(*)(int))casepapersize },
 	{ "psbb",		(void(*)(int))casepsbb },
@@ -168,6 +192,7 @@ static const struct {
 	{ "recursionlimit",	(void(*)(int))caserecursionlimit },
 	{ "return",		(void(*)(int))casereturn },
 	{ "rhang",		(void(*)(int))caserhang },
+	{ "rhanglevel",		(void(*)(int))caserhanglevel },
 	{ "rnn",		(void(*)(int))casernn },
 	{ "sentchar",		(void(*)(int))casesentchar },
 	{ "shc",		(void(*)(int))caseshc },
@@ -184,15 +209,23 @@ static const struct {
 	{ "unformat",		(void(*)(int))caseunformat },
 	{ "unwatch",		(void(*)(int))caseunwatch },
 	{ "unwatchn",		(void(*)(int))caseunwatchn },
+#ifdef NROFF
+	{ "utf8conv",		(void(*)(int))caseutf8conv },
+#endif
 	{ "vpt",		(void(*)(int))casevpt },
 	{ "warn",		(void(*)(int))casewarn },
 	{ "watch",		(void(*)(int))casewatch },
 	{ "watchlength",	(void(*)(int))casewatchlength },
 	{ "watchn",		(void(*)(int))casewatchn },
 	{ "while",		(void(*)(int))casewhile },
+	{ "wrdspc",		(void(*)(int))casewrdspc },
 	{ "write",		(void(*)(int))casewrite },
 	{ "writec",		(void(*)(int))casewritec },
 	{ "writem",		(void(*)(int))casewritem },
+	{ "wscalc",		(void(*)(int))casewscalc },
+	{ "wsmark",		(void(*)(int))casewsmark },
+	{ "wsmin",		(void(*)(int))casewsmin },
+	{ "wswarn",		(void(*)(int))casewswarn },
 	{ "xflag",		(void(*)(int))casexflag },
 	{ NULL,			NULL }
 };
@@ -201,6 +234,7 @@ static void *
 _growcontab(struct contab **contp, int *NMp, struct contab ***hashp)
 {
 	int	i, j, inc = 256;
+	ptrdiff_t	sft;
 	struct contab	*onc;
 	struct s	*s;
 
@@ -219,23 +253,23 @@ _growcontab(struct contab **contp, int *NMp, struct contab ***hashp)
 		*hashp = calloc(128, sizeof **hashp);
 		mrehash(*contp, inc, *hashp);
 	} else {
-		j = (char *)*contp - (char *)onc;
+		sft = (char *)*contp - (char *)onc;
 		for (i = 0; i < 128; i++)
 			if ((*hashp)[i])
 				(*hashp)[i] = (struct contab *)
-					((char *)((*hashp)[i]) + j);
+					((char *)((*hashp)[i]) + sft);
 		for (i = 0; i < *NMp; i++)
 			if ((*contp)[i].link)
 				(*contp)[i].link = (struct contab *)
-					((char *)((*contp)[i].link) + j);
+					((char *)((*contp)[i].link) + sft);
 		for (s = frame; s != stk; s = s->pframe)
 			if (s->contp >= onc && s->contp < &onc[*NMp])
 				s->contp = (struct contab *)
-					((char *)(s->contp) + j);
+					((char *)(s->contp) + sft);
 		for (i = 0; i <= dilev; i++)
 			if (d[i].soff >= onc && d[i].soff < &onc[*NMp])
 				d[i].soff = (struct contab *)
-					((char *)(d[i].soff) + j);
+					((char *)(d[i].soff) + sft);
 	}
 	*NMp += inc;
 	return *contp;
@@ -405,7 +439,8 @@ caserm(void)
 			continue;
 		if (contp->als) {
 			contt = _findmn(j, 1, contp->flags & FLAG_LOCAL);
-			if (--contt->nlink <= 0)
+			/* bugfix by S.N. */
+			if (contt != NULL && --contt->nlink <= 0)
 				clrmn(contt);
 		}
 		if (contp->nlink > 0)
@@ -530,7 +565,7 @@ _findmn(register int i, int als, int forcelocal)
 	struct contab	*contp;
 
 	s = macframe();
-	if (forcelocal || s != stk && s->mhash) {
+	if (forcelocal || (s != stk && s->mhash)) {
 		if (s->mhash == NULL)
 			return NULL;
 		if ((contp = findmn1(s->mhash, i, als)) != NULL)
@@ -601,9 +636,9 @@ finds(register int mn, int als, int globonly)
 	apptr = (filep)0;
 	if (oldmn != NULL)
 		flags = oldmn->flags;
-	if (globonly && (dl || oldmn && oldmn->flags & FLAG_LOCAL)) {
+	if (globonly && (dl || (oldmn && oldmn->flags & FLAG_LOCAL))) {
 		errprint("refusing to create local %s %s",
-			diflg || oldmn && oldmn->flags & FLAG_DIVERSION ?
+			diflg || (oldmn && oldmn->flags & FLAG_DIVERSION) ?
 				"diversion" : "macro",
 			macname(mn));
 		app = 0;
@@ -640,8 +675,8 @@ finds(register int mn, int als, int globonly)
 				break;
 		}
 		nextb = 0;
-		if (i == *NMp && _growcontab(contp, NMp, hashp) == NULL ||
-				als && (nextb = alloc()) == 0) {
+		if ((i == *NMp && _growcontab(contp, NMp, hashp) == NULL) ||
+				(als && (nextb = alloc()) == 0)) {
 			app = 0;
 			if (macerr++ > 1)
 				done2(02);
@@ -690,14 +725,14 @@ copyb(void)
 	int	req;
 	filep savoff = 0, tailoff = 0;
 	tchar	tailc = 0;
-	char	*contp, *mn;
+	const char	*contp;
+	char	*mn;
 
 	if (skip(0) || !(j = getrq(1)))
 		j = '.';
 	req = j;
 	contp = macname(req);
-	mn = malloc(strlen(contp) + 1);
-	strcpy(mn, contp);
+	mn = strdup(contp);
 	copyf++;
 	flushi();
 	nlflg = 0;
@@ -731,9 +766,13 @@ copyb(void)
 			j = 0;
 			goto c0;
 		}
-		if ((state == 2) && (i == mn[j])) {
-			j++;
-			goto c0;
+		if (state == 2) {
+			if (i == mn[j]) {
+				j++;
+				goto c0;
+			} else if (i == ' ' || i == '\t') {
+				goto c0;
+			}
 		}
 		state = 0;
 c0:
@@ -794,14 +833,14 @@ alloc (void)		/*return free blist[] block in nextb*/
 #ifdef	DEBUG
 	if (debug & DB_ALLC) {
 		char cc1, cc2;
-		fdprintf(stderr, "alloc: ");
+		fprintf(stderr, "alloc: ");
 		if (oldmn != NULL) {
 			cc1 = oldmn->rq & 0177;
 			if ((cc2 = (oldmn->rq >> BYTE) & 0177) == 0)
 				cc2 = ' ';
-			fdprintf(stderr, "oldmn %p %c%c, ", oldmn, cc1, cc2);
+			fprintf(stderr, "oldmn %p %c%c, ", oldmn, cc1, cc2);
 		}
-		fdprintf(stderr, "newmn %p; nextb was %lx, will be %lx\n",
+		fprintf(stderr, "newmn %p; nextb was %lx, will be %lx\n",
 			newmn, (long)nextb, (long)j);
 	}
 #endif	/* DEBUG */
@@ -816,7 +855,7 @@ ffree (		/*free blist[i] and blocks pointed to*/
 {
 	register int j;
 
-	while (blist[j = blisti(i)] != (unsigned) ~0) {
+	while (blist[j = blisti(i)] != (int) ~0) {
 		i = (filep) blist[j];
 		blist[j] = 0;
 	}
@@ -849,11 +888,11 @@ wbf (			/*store i into blist[offset] (?) */
 	if (!((++offset) & (BLK - 1))) {
 		wbfl();
 		j = blisti(--offset);
-		if (j < 0 || j >= nblist && growblist() == NULL) {
+		if (j < 0 || (j >= nblist && growblist() == NULL)) {
 			errprint("Out of temp file space");
 			done2(01);
 		}
-		if (blist[j] == (unsigned) ~0) {
+		if (blist[j] == (int) ~0) {
 			if (alloc() == 0) {
 				errprint("Out of temp file space");
 				done2(01);
@@ -885,7 +924,7 @@ rbf (void)		/*return next char from blist[] block*/
 	register filep j, p;
 
 	if (ip == -1) {		/* for rdtty */
-		if (j = rdtty())
+		if ((j = rdtty()))
 			return(j);
 		else
 			return(popi());
@@ -906,7 +945,7 @@ rbf (void)		/*return next char from blist[] block*/
 	/* this is an inline expansion of incoff: also dirty */
 	p = ++ip;
 	if ((p & (BLK - 1)) == 0) {
-		if ((ip = blist[blisti(p-1)]) == (unsigned) ~0) {
+		if ((ip = blist[blisti(p-1)]) == (int) ~0) {
 			errprint("Bad storage allocation");
 			ip = 0;
 			done2(-5);
@@ -938,7 +977,7 @@ incoff (		/*get next blist[] block*/
 {
 	p++;
 	if ((p & (BLK - 1)) == 0) {
-		if ((p = blist[blisti(p-1)]) == (unsigned) ~0) {
+		if ((p = blist[blisti(p-1)]) == (int) ~0) {
 			errprint("Bad storage allocation");
 			done2(-5);
 		}
@@ -951,7 +990,7 @@ tchar
 popi(void)
 {
 	register struct s *p;
-	tchar	c, d;
+	tchar	c, _d;
 
 	if (frame == stk)
 		return(0);
@@ -967,11 +1006,11 @@ popi(void)
 	lastpbp = p->lastpbp;
 	c = p->pch;
 	if (p->loopf & LOOP_NEXT) {
-		d = ch;
+		_d = ch;
 		ch = c;
 		pushi(p->newip, p->mname, p->flags);
 		c = 0;
-		ch = d;
+		ch = _d;
 	} else
 		if (p->loopf & LOOP_FREE)
 			ffree(p->newip);
@@ -1044,14 +1083,6 @@ macframe(void)
 	return(p);
 }
 
-
-char *
-setbrk(int x)
-{
-	return(calloc(x, 1));
-}
-
-
 static int
 _getsn(int *strp, int create)
 {
@@ -1121,8 +1152,8 @@ _collect(int termc)
 {
 	register tchar i = 0;
 	int	at = 0, asp = 0;
-	int	nt = 0, nsp = 0;
-	int	quote;
+	int	nt = 0, nsp = 0, nsp0;
+	int	quote, right;
 	struct s *savnxf;
 
 	copyf++;
@@ -1139,18 +1170,19 @@ _collect(int termc)
 		if (nt >= at)
 			savnxf->argt = realloc(savnxf->argt,
 				(at += 10) * sizeof *savnxf->argt);
-		savnxf->argt[nt++] = nsp;
-		quote = 0;
+		savnxf->argt[nt] = nsp0 = nsp; /* CK: Bugfix: \} counts \n(.$ */
+		quote = right = 0;
 		if (cbits(i = getch()) == '"')
 			quote++;
 		else 
 			ch = i;
 		while (1) {
 			i = getch();
-			if (termc && i == termc) {
+			if (termc && !quote && i == termc) {
 				if (nsp >= asp)
 					savnxf->argsp = realloc(savnxf->argsp,
 						++asp * sizeof *savnxf->argsp);
+				nt++;
 				savnxf->argsp[nsp++] = 0;
 				goto rtn;
 			}
@@ -1165,12 +1197,18 @@ _collect(int termc)
 			if (nsp >= asp)
 				savnxf->argsp = realloc(savnxf->argsp,
 					(asp += 200) * sizeof *savnxf->argsp);
-			savnxf->argsp[nsp++] = i;
+			if (cbits(i) == RIGHT) /* CK: Bugfix: \} counts \n(.$ */
+				right = 1;
+			else
+				savnxf->argsp[nsp++] = i;
 		}
 		if (nsp >= asp)
 			savnxf->argsp = realloc(savnxf->argsp,
 				++asp * sizeof *savnxf->argsp);
-		savnxf->argsp[nsp++] = 0;
+		if (!right || nsp != nsp0) { /* CK: Bugfix: \} counts \n(.$ */
+			nt++;
+			savnxf->argsp[nsp++] = 0;
+		}
 	}
 rtn:
 	if (termc && i != termc)
@@ -1249,7 +1287,7 @@ caseshift(void)
 		i = 1;
 	else {
 		noscale++;
-		i = atoi();
+		i = hatoi();
 		noscale--;
 		if (nonumb)
 			return;
@@ -1296,7 +1334,7 @@ casedi(int box)
 		if (dilev > 0) {
 #ifdef	DEBUG
 			if (debug & DB_MAC)
-				fdprintf(stderr, "ending diversion %s\n",
+				fprintf(stderr, "ending diversion %s\n",
 						macname(dip->curd));
 #endif	/* DEBUG */
 			numtab[DN].val = dip->dnl;
@@ -1305,8 +1343,7 @@ casedi(int box)
 			prwatchn(&numtab[DL]);
 			if (dip->boxenv) {
 				relsev(&env);
-				evcline(&env, dip->boxenv);
-				relsev(dip->boxenv);
+				env = *dip->boxenv;
 				free(dip->boxenv);
 			}
 			prwatch(dip->soff, dip->curd, 1);
@@ -1318,7 +1355,7 @@ casedi(int box)
 	}
 #ifdef	DEBUG
 	if (debug & DB_MAC)
-		fdprintf(stderr, "starting diversion %s\n", macname(i));
+		fprintf(stderr, "starting diversion %s\n", macname(i));
 #endif	/* DEBUG */
 	if (++dilev == NDI) {
 		struct d	*nd;
@@ -1359,7 +1396,7 @@ casedi(int box)
 		prwatch(newmn, i, 0);
 	}
 	dip->soff = newmn;
-	k = (int *) & dip->dnl;
+	k = &dip->dnl;
 	dip->flss = 0;
 	for (j = 0; j < 10; j++)
 		k[j] = 0;	/*not op and curd*/
@@ -1395,7 +1432,7 @@ void
 caseals(void)
 {
 	struct contab	*contp;
-	int	i, j, t;
+	int	i, j, _t;
 	int	flags = 0;
 
 	if (skip(1))
@@ -1410,19 +1447,19 @@ caseals(void)
 	}
 	if (contp->nlink == 0) {
 		munhash(contp);
-		t = makerq(NULL);
-		contp->rq = t;
+		_t = makerq(NULL);
+		contp->rq = _t;
 		maddhash(contp);
 		if (contp->flags & FLAG_LOCAL)
 			dl++;
 		if (finds(j, 0, 0) != 0 && newmn) {
-			newmn->als = t;
+			newmn->als = _t;
 			newmn->rq = j;
 			maddhash(newmn);
 			contp->nlink = 1;
 		}
 	} else
-		t = j;
+		_t = j;
 	if (contp->flags & FLAG_LOCAL)
 		dl++;
 	if (finds(i, 0, !dl) != 0) {
@@ -1433,7 +1470,7 @@ caseals(void)
 		if (newmn) {
 			if (newmn->rq)
 				munhash(newmn);
-			newmn->als = t;
+			newmn->als = _t;
 			newmn->rq = i;
 			newmn->flags |= flags;
 			maddhash(newmn);
@@ -1499,7 +1536,7 @@ casewatchlength(void)
 
 	if (!skip(1)) {
 		noscale++;
-		i = atoi();
+		i = hatoi();
 		noscale--;
 		if (!nonumb)
 			watchlength = i;
@@ -1520,7 +1557,7 @@ prwatch(struct contab *contp, int rq, int prc)
 		000
 	};
 	char	*buf = NULL;
-	char	*local;
+	const char	*local;
 	filep	savip;
 	tchar	c;
 	int	j, k;
@@ -1615,6 +1652,8 @@ casetl(void)
 		delim = '\'';
 	} else 
 		delim = cbits(delim);
+	noschr = 0;
+	argdelim = delim;
 	bufsz = LNSIZE;
 	buf = malloc(bufsz * sizeof *buf);
 	tp = buf;
@@ -1653,6 +1692,7 @@ casetl(void)
 			*tp++ = i;
 		}
 	}
+	argdelim = 0;
 	if (j<3)
 		w[j] = numtab[HP].val;
 	*tp++ = 0;
@@ -1662,15 +1702,22 @@ casetl(void)
 #ifdef NROFF
 	horiz(po);
 #endif
-	while (i = *tp++)
+	while ((i = *tp++))
 		pchar(i);
 	if (w[1] || w[2])
-		horiz(j = quant((lt - w[1]) / 2 - w[0], HOR));
-	while (i = *tp++)
+	{
+#ifdef NROFF
+		if (gemu)
+			horiz(j = quant((lt + HOR - w[1]) / 2 - w[0], HOR));
+		else
+#endif
+			horiz(j = quant((lt - w[1]) / 2 - w[0], HOR));
+	}
+	while ((i = *tp++))
 		pchar(i);
 	if (w[2]) {
 		horiz(lt - w[0] - w[1] - w[2] - j);
-		while (i = *tp++)
+		while ((i = *tp++))
 			pchar(i);
 	}
 	newline(0);
@@ -1743,9 +1790,9 @@ casesubstring(void)
 	if (skip(1))
 		return;
 	noscale++;
-	n1 = atoi();
+	n1 = hatoi();
 	if (skip(0) == 0)
-		n2 = atoi();
+		n2 = hatoi();
 	noscale--;
 	savip = ip;
 	ip = (filep)contp->mx;
@@ -1971,8 +2018,13 @@ caseunformat(int flag)
 				}
 			} else if (isadjmot(c))
 				continue;
-			else if (cbits(c) == PRESC)
-				setcbits(c, eschar);
+			else if (cbits(c) == PRESC) {
+				if (!noout) {
+					wbf(eschar);
+					wbf('e');
+				}
+				continue;
+			}
 			if (flag & 1 && !ismot(c) && cbits(c) != SLANT) {
 #ifndef	NROFF
 				int	m = cbits(c);
@@ -2026,7 +2078,7 @@ static struct map {
 	struct map	*link;
 	int	n;
 } *map[128];
-static char	**had;
+static const char	**had;
 static int	hadn;
 static int	alcd;
 
@@ -2102,9 +2154,9 @@ casepm(void)
 			k = 0;
 		kk += k;
 		if (!tot && contab[i].nlink == 0)
-			fdprintf(stderr, "%s %d\n", macname(xx), k);
+			fprintf(stderr, "%s %d\n", macname(xx), k);
 	}
-	fdprintf(stderr, "pm: total %d, macros %d, space %d\n", tcnt, cnt, kk);
+	fprintf(stderr, "pm: total %d, macros %d, space %d\n", tcnt, cnt, kk);
 }
 
 void
@@ -2115,14 +2167,14 @@ stackdump (void)	/* dumps stack of macros in process */
 	if (frame != stk) {
 		for (p = frame; p != stk; p = p->pframe)
 			if (p->mname != LOOP)
-				fdprintf(stderr, "%s ", macname(p->mname));
-		fdprintf(stderr, "\n");
+				fprintf(stderr, "%s ", macname(p->mname));
+		fprintf(stderr, "\n");
 	}
 }
 
 static char	laststr[NC+1];
 
-char *
+const char *
 macname(int rq)
 {
 	static char	buf[4][3];
@@ -2153,7 +2205,7 @@ static tchar
 mgetach(void)
 {
 	tchar	i;
-	int	j;
+	size_t	j;
 
 	lgf++;
 	i = getch();
@@ -2161,7 +2213,7 @@ mgetach(void)
 		i = charout[sbits(i)].ch;
 	j = cbits(i);
 	if (ismot(i) || j == ' ' || j == '\n' || j >= 0200 ||
-			j < sizeof nmctab && nmctab[j]) {
+			(j < sizeof nmctab && nmctab[j])) {
 		if (!ismot(i) && j >= 0200)
 			illseq(j, NULL, -3);
 		ch = i;
@@ -2182,7 +2234,8 @@ int
 maybemore(int sofar, int flags)
 {
 	char	c, buf[NC+1], pb[] = { '\n', 0 };
-	int	i = 2, n, _raw = raw, _init = init, _app = app;
+	int	n, _raw = raw, _init = init, _app = app;
+	size_t	i = 2;
 
 	if (xflag < 2)
 		return sofar;
@@ -2206,7 +2259,7 @@ maybemore(int sofar, int flags)
 		goto retn;
 	if ((n = mapget(buf)) >= hadn) {
 		if ((flags & 1) == 0) {
-			strcpy(laststr, buf);
+			n_strcpy(laststr, buf, sizeof(laststr));
 		retn:	buf[i-1] = c;
 			if (xflag < 3)
 				cpushback(&buf[2]);
@@ -2230,8 +2283,7 @@ maybemore(int sofar, int flags)
 		}
 		if (n >= alcd)
 			had = realloc(had, (alcd += 20) * sizeof *had);
-		had[n] = malloc(strlen(buf) + 1);
-		strcpy(had[n], buf);
+		had[n] = strdup(buf);
 		hadn = n+1;
 		mapadd(buf, n);
 	}
@@ -2248,7 +2300,8 @@ static int
 getls(int termc, int *strp, int create)
 {
 	char	c, buf[NC+1];
-	int	i = 0, j = -1, n = -1;
+	int	j = -1, n = -1;
+	size_t	i = 0;
 
 	do {
 		c = xflag < 3 ? getach() : mgetach();
@@ -2265,7 +2318,7 @@ getls(int termc, int *strp, int create)
 			nodelim(termc);
 	}
 	buf[--i] = 0;
-	if (i == 0 || c != termc && (!strp || nlflg))
+	if (i == 0 || (c != termc && (!strp || nlflg)))
 		j = 0;
 	else if (i <= 2) {
 		j = PAIR(buf[0], buf[1]);
@@ -2275,13 +2328,12 @@ getls(int termc, int *strp, int create)
 				if (hadn++ >= alcd)
 					had = realloc(had, (alcd += 20) *
 							sizeof *had);
-				had[n] = malloc(strlen(buf) + 1);
-				strcpy(had[n], buf);
+				had[n] = strdup(buf);
 				hadn = n + 1;
 				mapadd(buf, n);
 			} else {
 				n = -1;
-				strcpy(laststr, buf);
+				n_strcpy(laststr, buf, sizeof(laststr));
 			}
 		}
 	}
@@ -2296,7 +2348,7 @@ makerq(const char *name)
 	int	n;
 
 	if (name == NULL) {
-		roff_sprintf(_name, "\13%d", ++t);
+		roff_sprintf(_name, sizeof(_name), "\13%d", ++t);
 		name = _name;
 	}
 	if (name[0] == 0 || name[1] == 0 || name[2] == 0)
@@ -2305,22 +2357,21 @@ makerq(const char *name)
 		return MAXRQ2 + n;
 	if (hadn++ >= alcd)
 		had = realloc(had, (alcd += 20) * sizeof *had);
-	had[n] = malloc(strlen(name) + 1);
-	strcpy(had[n], name);
+	had[n] = strdup(name);
 	hadn = n + 1;
 	mapadd(name, n);
 	return MAXRQ2 + n;
 }
 
 static void
-addcon(int t, char *rs, void(*f)(int))
+addcon(int _t, const char *rs, void(*f)(int))
 {
 	int	n = hadn;
 
 	if (hadn++ >= alcd)
 		had = realloc(had, (alcd += 20) * sizeof *had);
 	had[n] = rs;
-	contab[t].rq = MAXRQ2 + n;
-	contab[t].f = f;
+	contab[_t].rq = MAXRQ2 + n;
+	contab[_t].f = f;
 	mapadd(rs, n);
 }

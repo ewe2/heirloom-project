@@ -27,18 +27,14 @@
 int 
 ctype(int il, int ic)
 {
-if (instead[il])
-	return(0);
-if (fullbot[il])
-	return(0);
-il = stynum[il];
-return(style[il][ic]);
+	if (instead[il])
+		return(0);
+	if (fullbot[il])
+		return(0);
+	il = stynum[il];
+	return(style[il][ic]);
 }
-int 
-min(int a, int b)
-{
-return(a<b ? a : b);
-}
+
 int 
 fspan(int i, int c)
 {
@@ -68,26 +64,26 @@ return(k);
 void
 tohcol(int ic)
 {
-			if (ic==0)
-				fprintf(tabout, "\\h'|0'");
-			else
-				fprintf(tabout, "\\h'(|\\n(%du+|\\n(%du)/2u'", ic+CLEFT, ic+CRIGHT-1);
+	if (ic==0)
+		fprintf(tabout, "\\h'|0'");
+	else
+		fprintf(tabout, "\\h'(|\\n(%du+|\\n(%du)/2u'", ic+CLEFT, ic+CRIGHT-1);
 }
 int 
 allh(int i)
 {
-/* return true if every element in line i is horizontal */
-/* also at least one must be horizontl */
-int c, one, k;
-if (fullbot[i]) return(1);
-for(one=c=0; c<ncol; c++)
+	/* return true if every element in line i is horizontal */
+	/* also at least one must be horizontl */
+	int c, one, k;
+	if (fullbot[i]) return(1);
+	for(one=c=0; c<ncol; c++)
 	{
-	k = thish(i,c);
-	if (k==0) return(0);
-	if (k==1) continue;
-	one=1;
+		k = thish(i,c);
+		if (k==0) return(0);
+		if (k==1) continue;
+		one=1;
 	}
-return(one);
+	return(one);
 }
 int 
 thish(int i, int c)
@@ -111,7 +107,7 @@ thish(int i, int c)
 	if (s==0 || (point((intptr_t)s) && *s==0))
 		return(1);
 	if (vspen(s)) return(1);
-	if (t=barent( s))
+	if ((t=barent( s)))
 		return(t);
 	return(0);
 }

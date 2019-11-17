@@ -21,7 +21,14 @@
  * Sccsid @(#)over.c	1.5 (gritter) 10/19/06
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 # include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 boverb(int p1, int p2) {
@@ -33,7 +40,7 @@ boverb(int p1, int p2) {
 #endif	/* NEQN */
 
 	treg = oalloc();
-	yyval = p1;
+	yyval.token = p1;
 #ifndef NEQN
 	d = VERT(EM(0.3, ps));
 	h = eht[p1] + eht[p2] + d;
@@ -44,10 +51,10 @@ boverb(int p1, int p2) {
 	b = eht[p2] - d;
 #ifndef	NEQN
 	if(dbg)printf(".\tb:bob: S%d <- S%d over S%d; b=%g, h=%g\n", 
-		yyval, p1, p2, b, h);
+		yyval.token, p1, p2, b, h);
 #else	/* NEQN */
 	if(dbg)printf(".\tb:bob: S%d <- S%d over S%d; b=%d, h=%d\n", 
-		yyval, p1, p2, b, h);
+		yyval.token, p1, p2, b, h);
 #endif	/* NEQN */
 	nrwid(p1, ps, p1);
 	nrwid(p2, ps, p2);
@@ -56,22 +63,22 @@ boverb(int p1, int p2) {
 #ifndef NEQN
 	printf(".nr %d \\n(%d+\\s%s.5m\\s0\n", treg, treg, tsize(EFFPS(ps)));
 	printf(".ds %d \\v'%gp'\\h'\\n(%du-\\n(%du/2u'\\*(%d\\\n", 
-		yyval, eht[p2]-ebase[p2]-d, treg, p2, p2);
+		yyval.token, eht[p2]-ebase[p2]-d, treg, p2, p2);
 	printf("\\h'-\\n(%du-\\n(%du/2u'\\v'%gp'\\*(%d\\\n", 
 		p2, p1, -(eht[p2]-ebase[p2]+d+ebase[p1]), p1);
 	printf("\\h'-\\n(%du-\\n(%du/2u+.1m'\\v'%gp'\\l'\\n(%du-.2m'\\h'.1m'\\v'%gp'\n", 
 		 treg, p1, ebase[p1]+d, treg, d);
 #else /* NEQN */
 	printf(".ds %d \\v'%du'\\h'\\n(%du-\\n(%du/2u'\\*(%d\\\n", 
-		yyval, eht[p2]-ebase[p2]-d, treg, p2, p2);
+		yyval.token, eht[p2]-ebase[p2]-d, treg, p2, p2);
 	printf("\\h'-\\n(%du-\\n(%du/2u'\\v'%du'\\*(%d\\\n", 
 		p2, p1, -eht[p2]+ebase[p2]-ebase[p1], p1);
 	printf("\\h'-\\n(%du-\\n(%du-2u/2u'\\v'%du'\\l'\\n(%du'\\v'%du'\n", 
 		 treg, p1, ebase[p1], treg, d);
 #endif /* NEQN */
-	ebase[yyval] = b;
-	eht[yyval] = h;
-	lfont[yyval] = rfont[yyval] = 0;
+	ebase[yyval.token] = b;
+	eht[yyval.token] = h;
+	lfont[yyval.token] = rfont[yyval.token] = 0;
 	ofree(p2);
 	ofree(treg);
 }

@@ -144,7 +144,7 @@ tabs (char **sv, char *line)
 	return(n-1);
 }
 
-char *
+const char *
 class (int nt, char **tv)
 {
 	if (hastype (nt, tv, 'J'))
@@ -180,7 +180,7 @@ caps(char *a, char *b)
 
 	p = b;
 	alph = 0;
-	while (c = *a++) {
+	while ((c = *a++)) {
 		this = isalpha(c);
 		if (this && alph == 1) {
 			*b++ = '\\';

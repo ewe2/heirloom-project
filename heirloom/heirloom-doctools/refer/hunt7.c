@@ -32,32 +32,35 @@
 #define FGSIZE 150
 
 int keepold = 1;	/* keep old things for fgrep search */
-char fgspace[FGSIZE];
-char *fgp = fgspace;
+static char fgspace[FGSIZE];
+static char *fgp = fgspace;
 char *fgnames[FGCT];
 char **fgnamp = fgnames;
 
 int
-findline(char *in, char **out, int outlen, long indexdate)
+findline(char *_in, char **out, int outlen, long _indexdate)
 {
 	static char name[100] = "";
 	char *p, **ftp;
 	static FILE *fa = NULL;
 	long lp, llen;
-	int len, k, nofil;
+# ifdef D1
+	int len;
+# endif
+	int k, nofil;
 
 # if D1
-	fprintf(stderr, "findline: %s\n", in);
+	fprintf(stderr, "findline: %s\n", _in);
 # endif
-	if (mindex(in, '!'))
+	if (mindex(_in, '!'))
 		/* return(remote(in, *out)); /\* Does NOTHING */
 		return(0);
 
-	nofil = in[0]==0;
-	for(p=in; *p && *p != ':' && *p != ';'; p++)
+	nofil = _in[0]==0;
+	for(p=_in; *p && *p != ':' && *p != ';'; p++)
 		;
 	if (*p) *p++=0;
-	else p=in;
+	else p=_in;
 	k = sscanf(p, "%ld,%ld", &lp, &llen);
 # ifdef D1
 	fprintf(stderr, "p %s k %d lp %ld llen %ld\n",p,k,lp,llen);
@@ -71,7 +74,7 @@ findline(char *in, char **out, int outlen, long indexdate)
 	fprintf(stderr, "lp %ld llen %ld\n",lp, llen);
 # endif
 # ifdef D1
-	fprintf(stderr, "fa now %o, p %o in %o %s\n",fa, p,in,in);
+	fprintf(stderr, "fa now %o, p %o %s\n",fa, p,_in);
 # endif
 	if (nofil)
 	{
@@ -81,24 +84,24 @@ findline(char *in, char **out, int outlen, long indexdate)
 		fa = stdin;
 	}
 	else
-		if (strcmp (name, in) != 0 || 1)
+		if (strcmp (name, _in) != 0 || 1)
 		{
 # if D1
-			fprintf(stderr, "old: %s new %s not equal\n",name,in);
+			fprintf(stderr, "old: %s new %s not equal\n",name,_in);
 # endif
 			if (fa != NULL)
-				fa = freopen(in, "r", fa);
+				fa = freopen(_in, "r", fa);
 			else
-				fa = fopen(in, "r");
+				fa = fopen(_in, "r");
 # if D1
 			if (fa==NULL)
-				fprintf(stderr, "failed to (re)open *%s*\n",in);
+				fprintf(stderr, "failed to (re)open *%s*\n",_in);
 # endif
 			if (fa == NULL)
 				return(0);
 			/* err("Can't open %s", in); */
-			strcpy(name, in);
-			if (gdate(fa) > indexdate && indexdate != 0)
+			strcpy(name, _in);
+			if (gdate(fa) > _indexdate && _indexdate != 0)
 			{
 				if (keepold)
 				{
@@ -118,7 +121,7 @@ findline(char *in, char **out, int outlen, long indexdate)
 		}
 # if D1
 		else
-			fprintf(stderr, "old %s new %s same fa %o\n", name,in,fa);
+			fprintf(stderr, "old %s new %s same fa %o\n", name,_in,fa);
 # endif
 	if (fa != NULL)
 	{
@@ -127,7 +130,10 @@ findline(char *in, char **out, int outlen, long indexdate)
                 if (*out == NULL) {
                 	return(0);
                 }
-		len = fread(*out, 1, llen, fa);
+# ifdef D1
+		len =
+# endif
+		fread(*out, 1, llen, fa);
 		*(*out + llen) = 0;
 # ifdef D1
 		fprintf(stderr, "length as read is %d\n",len);

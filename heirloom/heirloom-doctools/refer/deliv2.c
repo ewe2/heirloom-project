@@ -31,10 +31,12 @@
 int
 hash (const char *s)
 {
-	int c, n;
-	for(n=0; c= *s; s++)
-		n += (c*n+ c << (n%4));
-	return(n>0 ? n : -n);
+	unsigned int c, n;
+	int r;
+	for(n=0; (c= *s); s++)
+		n += (c*n+ (c << n%4));
+	r = (int)n;
+	return(r>0 ? r : -r);
 }
 
 void
@@ -49,33 +51,23 @@ err (const char *s, ...)
 	exit(1);
 }
 
-int
-prefix(const char *t, const char *s)
-{
-	int c;
-
-	while ((c= *t++) == *s++)
-		if (c==0) return(1);
-	return(c==0 ? 1: 0);
-}
-
-char *
+const char *
 mindex(const char *s, int c)
 {
 	register const char *p;
 	for( p=s; *p; p++)
 		if (*p ==c)
-			return((char *)p);
+			return(p);
 	return(0);
 }
 
 void *
 zalloc(int m,int n)
 {
-	void *
 # if D1
 	fprintf(stderr, "calling calloc for %d*%d bytes\n",m,n);
 # endif
+	void *
 	t = calloc(m,n);
 # if D1
 	fprintf(stderr, "calloc returned %p\n", t);

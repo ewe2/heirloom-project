@@ -26,7 +26,9 @@
 # include "t..c"
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 #include <libgen.h>
+#include <locale.h>
 # ifdef gcos
 /* required by GCOS because file is passed to "tbl" by troff preprocessor */
 # define _f1 _f
@@ -48,12 +50,13 @@ extern FILE *_f[];
 
 # define ever (;;)
 
+# ifndef gcos
+static void badsig(int);
+# endif
+
 int 
 main(int argc, char *argv[])
 {
-# ifndef gcos
-void badsig(int);
-# endif
 	progname = basename(argv[0]);
 # ifndef gcos
 signal(SIGPIPE, badsig);
@@ -76,15 +79,15 @@ setinp(argc,argv);
 while (gets1(&line, &line, &linesize))
 	{
 	fprintf(tabout, "%s\n",line);
-	if (prefix(".TS", line))
+	if (cprefix("TS", line))
 		tableput();
 	}
 fclose(tabin);
 free(line);
 return(0);
 }
-int sargc;
-char **sargv;
+static int sargc;
+static char **sargv;
 void 
 setinp(int argc, char **argv)
 {
@@ -93,41 +96,72 @@ setinp(int argc, char **argv)
 	sargc--; sargv++;
 	if (sargc>0)
 		swapin();
+	if (pr1403 || utf8 || tlp) nflm = 1;
 }
 int 
 swapin(void)
 {
+	char *optarg;
 	while (sargc>0 && **sargv=='-') /* Mem fault if no test on sargc */
-		{
+	{
 		if (sargc<=0) return(0);
-		if (match("-me", *sargv))
+		if (strcmp("-me", *sargv) == 0)
 			{
 			*sargv = MEMACSS;
 			break;
 			}
-		if (match("-ms", *sargv))
+		if (strcmp("-ms", *sargv) == 0)
 			{
 			*sargv = MACROSS;
 			break;
 			}
-		if (match("-mm", *sargv))
+		if (strcmp("-mm", *sargv) == 0)
 			{
 			*sargv = PYMACSS;
 			break;
 			}
-		if (match("-TX", *sargv))
-			pr1403=1;
-		else if (match("-g", *sargv))
+		if ((*sargv)[1] == 'T') {
+			optarg = *sargv + 2;
+			if (!*optarg) {
+				sargc--; sargv++;
+				if (!sargc || **sargv == '-') {
+					fprintf(stderr, "%s: Argument expected"
+					    " after option -T\n", progname);
+					exit(1);
+				}
+				optarg = *sargv;
+			}
+			if (*optarg == 'X' && !optarg[1]) {
+				pr1403=1;
+			} else if (!strcmp(optarg, "lp")) {
+				tlp = 1;
+				utf8 = 0;
+				Graphics = 0;
+			} else if (!strcmp(optarg, "locale")) {
+				Graphics = 0;
+				if (strstr(setlocale(LC_ALL, ""), "UTF-8")) {
+					utf8 = 1;
+					tlp = 0;
+				} else {
+					tlp = 1;
+				}
+			}
+		}
+		else if (strcmp("-g", *sargv) == 0)
+		{
 			Graphics=1;
+			utf8 = 0;
+			tlp = 0;
+		}
 		else {
 			(void) fprintf(stderr, "%s: Invalid option "
 			    "(%s).\n", progname, *sargv);
 			(void) fprintf(stderr, "Usage: %s [ -me ] "
-			    "[ -mm ] [ -ms ] [ filename ] ...\n", progname);
+			    "[ -mm ] [ -ms ] [ filename ... ]\n", progname);
 			exit(1);
 		}
 		sargc--; sargv++;
-		}
+	}
 	if (sargc<=0) return(0);
 # ifndef gcos
 /* file closing is done by GCOS troff preprocessor */
@@ -141,14 +175,14 @@ swapin(void)
 # endif
 	fprintf(tabout, ".lf 1 %s\n", ifile);
 	if (tabin==NULL)
-		error("Can't open file");
+		return error("Can't open file");
 	sargc--;
 	sargv++;
 	return(1);
 }
 # ifndef gcos
 void 
-badsig(int unused)
+badsig(int unused __unused)
 {
 signal(SIGPIPE, SIG_IGN);
  exit(0);

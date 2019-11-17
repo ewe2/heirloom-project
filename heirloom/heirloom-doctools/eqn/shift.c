@@ -21,20 +21,26 @@
  * Sccsid @(#)shift.c	1.6 (gritter) 1/13/08
  */
 
-# include "e.h"
-#include "e.def"
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
+#include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 bshiftb(int p1, int dir, int p2) {
 #ifndef NEQN
 	float shval, d1, h1, b1, h2, b2;
 	float diffps, effps, effps2;
-	char *sh1, *sh2;
+	const char *sh1, *sh2;
 #else	/* NEQN */
 	int shval, d1, h1, b1, h2, b2;
 #endif /* NEQN */
 
-	yyval = p1;
+	yyval.token = p1;
 	h1 = eht[p1];
 	b1 = ebase[p1];
 	h2 = eht[p2];
@@ -55,8 +61,8 @@ bshiftb(int p1, int dir, int p2) {
 		shval = - d1 + h2 - b2;
 		if( d1+b1 > h2 ) /* move little sub down */
 			shval = b1-b2;
-		ebase[yyval] = b1 + max(0, h2-b1-d1);
-		eht[yyval] = h1 + max(0, h2-b1-d1);
+		ebase[yyval.token] = b1 + max(0, h2-b1-d1);
+		eht[yyval.token] = h1 + max(0, h2-b1-d1);
 #ifndef NEQN
 		if (ital(rfont[p1]) && rom(lfont[p2]))
 			sh1 = "\\|";
@@ -70,7 +76,7 @@ bshiftb(int p1, int dir, int p2) {
 #else /* NEQN */
 		d1 = VERT(1);
 #endif /* NEQN */
-		ebase[yyval] = b1;
+		ebase[yyval.token] = b1;
 #ifndef NEQN
 		shval = -VERT( (4 * (h1-b1)) / 10 ) - b2;
 		if( VERT(4*(h1-b1)/10) + h2 < h1-b1 )	/* raise little super */
@@ -80,20 +86,20 @@ bshiftb(int p1, int dir, int p2) {
 #endif /* NEQN */
 			shval = -(h1-b1) + h2-b2 - d1;
 #ifndef NEQN
-		eht[yyval] = h1 + max(0, h2-VERT((6*(h1-b1))/10));
+		eht[yyval.token] = h1 + max(0, h2-VERT((6*(h1-b1))/10));
 		if (ital(rfont[p1]))
 			sh1 = "\\|";
 		if (ital(rfont[p2]))
 			sh2 = "\\|";
 #else /* NEQN */
-		eht[yyval] = h1 + max(0, h2 - VERT(1));
+		eht[yyval.token] = h1 + max(0, h2 - VERT(1));
 #endif /* NEQN */
 	}
 #ifndef NEQN
 	if(dbg)printf(".\tb:b shift b: S%d <- S%d vert %g S%d vert %g; b=%g, h=%g\n", 
-		yyval, p1, shval, p2, -shval, ebase[yyval], eht[yyval]);
+		yyval.token, p1, shval, p2, -shval, ebase[yyval.token], eht[yyval.token]);
 	printf(".as %d \\v'%gp'\\s-%s%s\\*(%d\\s+%s%s\\v'%gp'\n", 
-		yyval, shval, tsize(diffps), sh1, p2, tsize(diffps), sh2, -shval);
+		yyval.token, shval, tsize(diffps), sh1, p2, tsize(diffps), sh2, -shval);
 	ps += deltaps;
 	if (ital(rfont[p2]))
 		rfont[p1] = 0;
@@ -101,9 +107,9 @@ bshiftb(int p1, int dir, int p2) {
 		rfont[p1] = rfont[p2];
 #else /* NEQN */
 	if(dbg)printf(".\tb:b shift b: S%d <- S%d vert %d S%d vert %d; b=%d, h=%d\n", 
-		yyval, p1, shval, p2, -shval, ebase[yyval], eht[yyval]);
+		yyval.token, p1, shval, p2, -shval, ebase[yyval.token], eht[yyval.token]);
 	printf(".as %d \\v'%du'\\*(%d\\v'%du'\n", 
-		yyval, shval, p2, -shval);
+		yyval.token, shval, p2, -shval);
 #endif /* NEQN */
 	ofree(p2);
 }
@@ -111,8 +117,8 @@ bshiftb(int p1, int dir, int p2) {
 void
 shift(int p1) {
 	ps -= deltaps;
-	yyval = p1;
-	if(dbg)printf(".\tshift: %d;ps=%g\n", yyval, ps);
+	yyval.token = p1;
+	if(dbg)printf(".\tshift: %d;ps=%g\n", yyval.token, ps);
 }
 
 void
@@ -126,8 +132,8 @@ shift2(int p1, int p2, int p3) {
 #endif /* NEQN */
 
 	treg = oalloc();
-	yyval = p1;
-	if(dbg)printf(".\tshift2 s%d <- %d %d %d\n", yyval, p1, p2, p3);
+	yyval.token = p1;
+	if(dbg)printf(".\tshift2 s%d <- %d %d %d\n", yyval.token, p1, p2, p3);
 	effps = EFFPS(ps+deltaps);
 #ifndef NEQN
 	eht[p3] = h3 = VERT( (eht[p3] * effps) / EFFPS(ps) );
@@ -157,11 +163,11 @@ shift2(int p1, int p2, int p3) {
 #endif /* NEQN */
 		supsh = -(h1-b1) + (h3-b3) - d2;
 #ifndef NEQN
-	eht[yyval] = h1 + max(0, h3-VERT( (6*(h1-b1))/10 )) + max(0, h2-b1-d1);
+	eht[yyval.token] = h1 + max(0, h3-VERT( (6*(h1-b1))/10 )) + max(0, h2-b1-d1);
 #else /* NEQN */
-	eht[yyval] = h1 + max(0, h3-VERT(1)) + max(0, h2-b1-d1);
+	eht[yyval.token] = h1 + max(0, h3-VERT(1)) + max(0, h2-b1-d1);
 #endif /* NEQN */
-	ebase[yyval] = b1+max(0, h2-b1-d1);
+	ebase[yyval.token] = b1+max(0, h2-b1-d1);
 #ifndef NEQN
 	if (ital(rfont[p1]) && rom(lfont[p2]))
 		printf(".ds %d \\|\\*(%d\n", p2, p2);
@@ -192,7 +198,7 @@ shift2(int p1, int p2, int p3) {
 	ps += deltaps;
 #ifndef NEQN
 	if (ital(rfont[p2]))
-		rfont[yyval] = 0;	/* lie */
+		rfont[yyval.token] = 0;	/* lie */
 #endif /* NEQN */
 	ofree(p2); ofree(p3); ofree(treg);
 }

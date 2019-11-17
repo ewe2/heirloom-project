@@ -1,12 +1,12 @@
 #
 # A BSD-compatible install command.
 #
-INSTALL=/usr/ucb/install
+INSTALL=install
 
 #
 # Packaging prefix.
 #
-PREFIX=/usr
+PREFIX=/usr/local
 
 #
 # Where to place binaries.
@@ -26,7 +26,7 @@ PUBDIR=$(PREFIX)/pub
 #
 # Where to place manual pages.
 #
-MANDIR=$(PREFIX)/share/man/5man
+MANDIR=$(PREFIX)/share/heirloom-doctools/man
 
 #
 # Where to place the troff macro packages.
@@ -68,22 +68,22 @@ EUC=-DEUC
 #
 # Binaries are stripped with this command after installation.
 #
-STRIP=strip -s -R .comment -R .note
+STRIP=strip
 
 #
 # The C compiler.
 #
-CC=cc
+#CC=
 
 #
 # The C++ compiler.
 #
-CCC=c++
+#CXX=
 
 #
 # Compiler flags.
 #
-CFLAGS=-O
+_CFLAGS=$(CFLAGS) $(_CPPFLAGS) $(__CDBG) $(__CLDBG)
 
 #
 # C preprocessor flags.
@@ -91,73 +91,69 @@ CFLAGS=-O
 # Use -D_GNU_SOURCE for Linux with GNU libc.
 # Use -D_INCLUDE__STDC_A1_SOURCE for HP-UX.
 #
-CPPFLAGS=-D_GNU_SOURCE
-
-#
-# Warning flags for the compiler.
-#
-#WARN=
+_CPPFLAGS=$(CPPFLAGS) -D_GNU_SOURCE
 
 #
 # Linker flags.
 #
-LDFLAGS=
+_LDFLAGS=$(LDFLAGS) $(__CLDBG)
 
 #
 # Additional libraries to link with.
 #
-LIBS=
+#LIBS=
 
 #
 # A Bourne-compatible shell.
 #
-SHELL=/home/ewe2/bin/heirloom-sh
-
-#
-# Run ranlib if it is in the current path. This should take care
-# of most situations. On Mac OS X, you need to uncomment "ranlib -c".
-#
-RANLIB=(hash ranlib) >/dev/null 2>&1 || exit 0; ranlib
-#RANLIB=ranlib -c
+SHELL=/bin/sh
+RELEASE = Git snapshot 190405
+#RELEASE = release 160308
 LIBHNJ = ../libhnj
+BST = ../../stuff/bst
 VPATH=..
 OBJ = t10.o t6.o hytab.o n1.o n2.o n3.o n4.o n5.o \
 	n7.o n8.o n9.o ni.o nii.o suftab.o makedev.o afm.o otf.o unimap.o \
-	version.o
+	version.o fontmap.o $(BST)/bst.o
 
-FLAGS = -DUSG $(EUC) -I. -I.. -DMACDIR='"$(MACDIR)"' \
+FLAGS = -DUSG $(EUC) -I. -I.. -I../../include -DMACDIR='"$(MACDIR)"' \
 	-DFNTDIR='"$(FNTDIR)"' -DTABDIR='"$(TABDIR)"' -DHYPDIR='"$(HYPDIR)"' \
-	-DSHELL='"$(SHELL)"'
+	-DSHELL='"$(SHELL)"' -DRELEASE='"$(RELEASE)"' $(DEFINES) -I$(BST)
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(CPPFLAGS) $(FLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
-all: troff ta otfdump
+all: troff ta otfdump troff.1
 
 troff: $(OBJ) $(LIBHNJ)/libhnj.a
-	$(CC) $(LDFLAGS) $(OBJ) -L$(LIBHNJ) -lhnj $(LIBS) -o troff
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(OBJ) -L$(LIBHNJ) -lhnj $(LIBS) -o troff
 
 ta: draw.o ta.o
-	$(CC) $(LDFLAGS) draw.o ta.o $(LIBS) -lm -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) draw.o ta.o $(LIBS) -lm -o $@
 
 otfdump: otfdump.o otfdump_vs.o
-	$(CC) $(LDFLAGS) otfdump.o otfdump_vs.o $(LIBS) -o $@
+	$(CC) $(_CFLAGS) $(_LDFLAGS) otfdump.o otfdump_vs.o $(LIBS) -o $@
 
 install:
 	$(INSTALL) -c troff $(ROOT)$(BINDIR)/troff
 	$(STRIP) $(ROOT)$(BINDIR)/troff
 	$(INSTALL) -c ta $(ROOT)$(BINDIR)/ta
 	$(STRIP) $(ROOT)$(BINDIR)/ta
-	$(INSTALL) -c otfdump $(ROOT)$(BINDIR)/otfdump
-	$(STRIP) $(ROOT)$(BINDIR)/otfdump
-	$(INSTALL) -c -m 644 troff.1b $(ROOT)$(MANDIR)/man1b/troff.1b
-	$(INSTALL) -c -m 644 otfdump.1 $(ROOT)$(MANDIR)/man1/otfdump.1
+	$(INSTALL) -c otfdump $(ROOT)$(BINDIR)/otf_info
+	$(STRIP) $(ROOT)$(BINDIR)/otf_info
+	$(INSTALL) -c -m 644 troff.1 $(ROOT)$(MANDIR)/man1/troff.1
+	$(INSTALL) -c -m 644 otfdump.1 $(ROOT)$(MANDIR)/man1/otf_info.1
 
 clean:
 	rm -f $(OBJ) draw.o ta.o troff ta otfdump otfdump.o otfdump_vs.o \
-		core log *~
+		core log *~ troff.1
 
 mrproper: clean
+
+troff.1: troff.1.in
+	sed -e 's"/usr/ucblib/doctools/font/"$(ROOT)$(FNTDIR)/"' \
+	    -e 's"/usr/ucblib/doctools/tmac/"$(ROOT)$(MACDIR)/"' \
+	    troff.1.in > $@
 
 draw.o: draw.c
 makedev.o: makedev.c dev.h
@@ -182,4 +178,5 @@ version.o: ../version.c
 otfdump_vs.o: ../version.c
 afm.o: dev.h afm.h
 otf.o: dev.h afm.h unimap.h
-otfdump.o: afm.h afm.c otf.c otfdump.c dpost.d/getopt.c dev.h
+otfdump.o: afm.h afm.c otf.c otfdump.c dev.h
+fontmap.o: fontmap.h

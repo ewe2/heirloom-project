@@ -22,12 +22,12 @@
  */
 
  /* t0.c: storage allocation */
-#
 # include "t..c"
 int MAXLIN;
 int MAXCOL;
 int MAXHEAD;
 int expflg = 0;
+int xcolflg;
 int ctrflg = 0;
 int boxflg = 0;
 int dboxflg = 0;
@@ -56,6 +56,7 @@ char ***csize;	/* csize[MAXHEAD][MAXCOL][20] */
 char ***vsize;	/* vsize[MAXHEAD][MAXCOL][20] */
 int **lefline;	/* lefline[MAXHEAD][MAXCOL] */
 char **cll;	/* cll[MAXCOL][CLLEN] */
+int *xcol;
 /*char *rpt[MAXHEAD][MAXCOL];*/
 /*char rpttx[MAXRPT];*/
 int *stynum;	/* stynum[MAXLIN+1] */
@@ -68,8 +69,8 @@ int *linestop;	/* linestop[MAXLIN] */
 int *topat;	/* topat[MAXLIN] */
 int nlin, ncol;
 int iline = 1;
-char *ifile = "Input";
-int texname = 'a';
+const char *ifile = "Input";
+intptr_t texname = 'a';
 int texct = 0;
 int texct2 = -1;
 char texstr[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWYXZ0123456789";
@@ -79,3 +80,6 @@ char *exstore, *exlim;
 const char *progname;
 FILE *tabin  /*= stdin */;
 FILE *tabout  /* = stdout */;
+int utf8;
+int tlp;
+int nflm;

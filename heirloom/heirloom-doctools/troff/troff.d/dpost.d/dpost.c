@@ -279,31 +279,22 @@
 #include	"dpost.h"		/* a few definitions just used here */
 #include	"asciitype.h"
 #include	"afm.h"
+#include	"fontmap.h"
 
+char			*progname;
+static const char	*prologue = DPOST;	/* the basic PostScript prologue */
+const char		*colorfile = COLOR;	/* things needed for color support */
+const char		*drawfile = DRAW;	/* and drawing */
+static const char	*cutmarksfile = CUTMARKS;
+static const char	*formfile = FORMFILE;	/* stuff for multiple pages per sheet */
+const char		*baselinefile = BASELINE;
 
-#if defined (__GLIBC__) && defined (_IO_getc_unlocked)
-#undef	getc
-#define	getc(f)		_IO_getc_unlocked(f)
-#endif
-#if defined (__GLIBC__) && defined (_IO_putc_unlocked)
-#undef	putc
-#define	putc(c, f)	_IO_putc_unlocked(c, f)
-#endif
+static const char	*fontdir = FONTDIR;	/* binary device directories found here */
+static char	*hostfontdir = NULL;	/* host resident font directory */
 
-
-char		*prologue = DPOST;	/* the basic PostScript prologue */
-char		*colorfile = COLOR;	/* things needed for color support */
-char		*drawfile = DRAW;	/* and drawing */
-char		*cutmarksfile = CUTMARKS;
-char		*formfile = FORMFILE;	/* stuff for multiple pages per sheet */
-char		*baselinefile = BASELINE;
-
-char		*fontdir = FONTDIR;	/* binary device directories found here */
-char		*hostfontdir = NULL;	/* host resident font directory */
-
-int		formsperpage = 1;	/* page images on each piece of paper */
-int		copies = 1;		/* and this many copies of each sheet */
-int		picflag = ON;		/* enable/disable picture inclusion */
+static int	formsperpage = 1;	/* page images on each piece of paper */
+static int	copies = 1;		/* and this many copies of each sheet */
+int	picflag = ON;		/* enable/disable picture inclusion */
 
 
 /*
@@ -323,7 +314,7 @@ int		picflag = ON;		/* enable/disable picture inclusion */
 int		encoding = DFLTENCODING;
 int		realencoding = DFLTENCODING;
 int		maxencoding = MAXENCODING;
-int		eflag;
+static int	eflag;
 
 int		LanguageLevel;	/* PostScript output language level */
 static int	Binary;		/* PostScript output contains binary data */
@@ -339,10 +330,10 @@ static int	Binary;		/* PostScript output contains binary data */
  */
 
 
-char		seenfonts[MAXINTERNAL+1];
-int		docfonts = 0;
-struct afmtab	**afmfonts;
-int		afmcount = 0;
+static char		seenfonts[MAXINTERNAL+1];
+static int		docfonts = 0;
+static struct afmtab	**afmfonts;
+static int		afmcount = 0;
 
 /*
  *
@@ -357,8 +348,8 @@ int		afmcount = 0;
 
 
 #define	devname	troff_devname
-char		devname[20] = "";	/* job is formatted for this printer */
-char		*realdev = DEVNAME;	/* a good description of target printer */
+static char		devname[20] = "";	/* job is formatted for this printer */
+static const char		*realdev = DEVNAME;	/* a good description of target printer */
 
 
 /*
@@ -371,12 +362,12 @@ char		*realdev = DEVNAME;	/* a good description of target printer */
 
 struct dev	dev;			/* DESC starts this way */
 struct Font	**fontbase;		/* FONT files begin this way */
-int		*pstab;			/* list of available sizes */
-int		nsizes = 1;		/* and the number of sizes in that list */
-int		smnt;			/* index of first special font */
+static int	*pstab;			/* list of available sizes */
+static int	nsizes = 1;		/* and the number of sizes in that list */
+static int	smnt;			/* index of first special font */
 int		nchtab;			/* number of special character names */
-int		fsize;			/* max size of a font files in bytes */
-int		unitwidth;		/* set to dev.unitwidth */
+static int	fsize;			/* max size of a font files in bytes */
+static int	unitwidth;		/* set to dev.unitwidth */
 char		*chname;		/* special character strings */
 short		*chtab;			/* used to locate character names */
 unsigned short	**fitab;		/* locates char info on each font */
@@ -400,7 +391,7 @@ char		**kerntab;		/* for makefont() */
  */
 
 
-char		*downloaded;		/* nonzero means it's been downloaded */
+static char	*downloaded;		/* nonzero means it's been downloaded */
 
 
 /*
@@ -414,22 +405,22 @@ char		*downloaded;		/* nonzero means it's been downloaded */
 int		nfonts = 0;		/* number of font positions */
 int		size = 1;		/* current size - internal value */
 #define	FRACTSIZE	-23		/* if size == FRACTSIZE then ... */
-float		fractsize = 0;		/* fractional point size */
-int		font = 0;		/* font position we're using now */
-int		subfont = 0;		/* extra encoding vector */
+static float	fractsize = 0;		/* fractional point size */
+static int	font = 0;		/* font position we're using now */
+static int	subfont = 0;		/* extra encoding vector */
 int		hpos = 0;		/* where troff wants to be - horizontally */
 int		vpos = 0;		/* same but vertically */
-float		lastw = 0;		/* width of the last input character */
-int		track = 0;		/* tracking hint from troff */
-int		lasttrack = 0;		/* previous tracking hint */
-int		tracked;		/* records need to flush track */
-int		lastc = 0;		/* and its name (or index) */
+static float	lastw = 0;		/* width of the last input character */
+static int	track = 0;		/* tracking hint from troff */
+static int	lasttrack = 0;		/* previous tracking hint */
+static int	tracked;		/* records need to flush track */
+static int	lastc = 0;		/* and its name (or index) */
 
 int		res;			/* resolution assumed in input file */
-float		widthfac = 1.0;		/* for emulation = res/dev.res */
-float		horscale = 1.0;		/* horizontal font scaling */
-float		lasthorscale = 1.0;	/* last horizontal font scaling */
-int		wordspace = 0;		/* w command was last */
+static float	widthfac = 1.0;		/* for emulation = res/dev.res */
+static float	horscale = 1.0;		/* horizontal font scaling */
+static float	lasthorscale = 1.0;	/* last horizontal font scaling */
+static int	wordspace = 0;		/* w command was last */
 
 
 /*
@@ -441,13 +432,13 @@ int		wordspace = 0;		/* w command was last */
  */
 
 
-int		lastsize = -1;		/* last internal size we used */
-float		lastfractsize = -1;	/* last fractional size */
-int		lastfont = -1;		/* last font we told printer about */
-int		lastsubfont = -1;	/* last extra encoding vector */
-float		lastx = -1;		/* printer's current position */
-int		lasty = -1;
-int		savey = -1;
+static int	lastsize = -1;		/* last internal size we used */
+static float	lastfractsize = -1;	/* last fractional size */
+static int	lastfont = -1;		/* last font we told printer about */
+static int	lastsubfont = -1;	/* last extra encoding vector */
+static float	lastx = -1;		/* printer's current position */
+static int	lasty = -1;
+static int	savey = -1;
 int		lastend;		/* where last character on this line was */
 
 
@@ -464,7 +455,7 @@ int		lastend;		/* where last character on this line was */
  */
 
 
-struct  {
+static struct  {
 
 	struct afmtab	*afm;		/* AFM data, if any */
 	char	*name;			/* name of the font loaded here */
@@ -473,7 +464,7 @@ struct  {
 	int	fontslant;		/* angle from x S ... */
 
 
-} fontname[NFONT+1] = {NULL, 0};
+} fontname[NFONT+1];
 
 
 /*
@@ -491,9 +482,9 @@ struct  {
  */
 
 
-int		gotspecial = FALSE;
-int		gotregular = FALSE;
-int		seenpage = FALSE;
+static int		gotspecial = FALSE;
+static int		gotregular = FALSE;
+static int		seenpage = FALSE;
 
 
 /*
@@ -509,10 +500,10 @@ int		seenpage = FALSE;
  */
 
 
-float		pointslop = SLOP;	/* horizontal error in points */
-int		Sflag;			/* unless -S gives explicit slop */
-int		slop;			/* and machine units */
-int		rvslop;			/* to extend box in reverse video mode */
+static float		pointslop = SLOP;	/* horizontal error in points */
+static int		Sflag;			/* unless -S gives explicit slop */
+static int		slop;			/* and machine units */
+static int		rvslop;			/* to extend box in reverse video mode */
 
 
 /*
@@ -528,11 +519,11 @@ int		rvslop;			/* to extend box in reverse video mode */
  */
 
 
-int		textcount = 0;		/* strings accumulated so far */
-int		stringstart = 0;	/* where the next one starts */
-int		laststrstart = INT_MIN;	/* save for optimization */
-int		spacecount = 0;		/* spaces seen so far on current line */
-int		charcount = 0;		/* characters on current line */
+static int		textcount = 0;		/* strings accumulated so far */
+static int		stringstart = 0;	/* where the next one starts */
+static int		laststrstart = INT_MIN;	/* save for optimization */
+static int		spacecount = 0;		/* spaces seen so far on current line */
+static int		charcount = 0;		/* characters on current line */
 
 
 /*
@@ -545,9 +536,9 @@ int		charcount = 0;		/* characters on current line */
  */
 
 
-char		strings[STRINGSPACE];
-char		*strptr;
-Line		line[MAXSTACK+3];
+static char		strings[STRINGSPACE];
+static char		*strptr;
+static Line		line[MAXSTACK+3];
 
 
 /*
@@ -570,8 +561,8 @@ Line		line[MAXSTACK+3];
  */
 
 
-Devfontmap	*devfontmap = NULL;	/* device level */
-Fontmap		fontmap[] = FONTMAP;	/* and general mapping tables - emulation */
+static Devfontmap	*devfontmap = NULL;	/* device level */
+static Fontmap		fontmap[] = FONTMAP;	/* and general mapping tables - emulation */
 
 
 /*
@@ -640,16 +631,16 @@ int		printed = 0;		/* charge for this many pages */
  */
 
 
-FILE		*tf = NULL;		/* PostScript output goes here */
-FILE		*gf = NULL;		/* global data goes here */
-FILE		*rf = NULL;		/* resource data goes here */
-FILE		*sf = NULL;		/* supplied resource comments go here */
-FILE		*nf = NULL;		/* needed resource comments go here */
-FILE		*pf = NULL;		/* elements of _custompagesetup */
-int		sfcount;		/* count of supplied resources */
-int		nfcount;		/* count of needed resources */
-int		ostdout;		/* old standard output */
-FILE		*fp_acct = NULL;	/* accounting stuff written here */
+FILE	*tf = NULL;		/* PostScript output goes here */
+FILE	*gf = NULL;		/* global data goes here */
+FILE	*rf = NULL;		/* resource data goes here */
+FILE	*sf = NULL;		/* supplied resource comments go here */
+FILE	*nf = NULL;		/* needed resource comments go here */
+FILE	*pf = NULL;		/* elements of _custompagesetup */
+static int	sfcount;		/* count of supplied resources */
+static int	nfcount;		/* count of needed resources */
+static int	ostdout;		/* old standard output */
+static FILE	*fp_acct = NULL;	/* accounting stuff written here */
 
 
 /*
@@ -662,9 +653,12 @@ FILE		*fp_acct = NULL;	/* accounting stuff written here */
  */
 
 
-char		temp[4096];
+static char	temp[4096];
 
 /*****************************************************************************/
+
+static char *linkborderstyle;
+static char *ulinkborderstyle;
 
 static void	sethorscale(char *);
 static void	t_papersize(char *);
@@ -680,6 +674,7 @@ static void	t_linkborder(char *);
 static void	t_ulink(char *);
 static void	t_ulinkcolor(char *);
 static void	t_ulinkborder(char *);
+static char	*t_linkborderstyle(char *);
 
 static int	mb_cur_max;
 
@@ -748,6 +743,7 @@ main(int agc, char *agv[])
     argc = agc;				/* global so everyone can use them */
     argv = agv;
 
+    progname =
     prog_name = argv[0];		/* just for error messages */
 
     init_signals();			/* sets up interrupt handling */
@@ -764,7 +760,7 @@ main(int agc, char *agv[])
 }   /* End of main */
 
 /*****************************************************************************/
-int
+static int
 putint(int n, FILE *fp)
 {
     char	buf[20];
@@ -794,7 +790,7 @@ putint(int n, FILE *fp)
     return c;
 }
 
-int
+static int
 putstring1(const char *sp, int n, FILE *fp)
 {
 /*
@@ -808,7 +804,7 @@ putstring1(const char *sp, int n, FILE *fp)
     return n + 2;
 }
 
-int
+static int
 putstring(const char *sp, int n, FILE *fp)
 {
     int	c = 0, m;
@@ -858,7 +854,7 @@ init_signals(void)
 
 /*****************************************************************************/
 static char *
-pdfdate(time_t *tp, char *buf, size_t size)
+pdfdate(time_t *tp, char *buf, size_t sz)
 {
     struct tm	*tmptr;
     int	tzdiff, tzdiff_hour, tzdiff_min;
@@ -870,7 +866,7 @@ pdfdate(time_t *tp, char *buf, size_t size)
     tmptr = localtime(tp);
     if (tmptr->tm_isdst > 0)
 	tzdiff_hour++;
-    snprintf(buf, size, "(D:%04d%02d%02d%02d%02d%02d%+03d'%02d')",
+    snprintf(buf, sz, "(D:%04d%02d%02d%02d%02d%02d%+03d'%02d')",
 	tmptr->tm_year + 1900,
 	tmptr->tm_mon + 1, tmptr->tm_mday,
 	tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec,
@@ -988,7 +984,7 @@ header(FILE *fp)
 		    -bp->Count : bp->Count);
 		fprintf(fp, "  /Dest /Bookmark$%d\n"
 		            "/OUT pdfmark\n",
-		    bp - &Bookmarks[0]);
+		    (int)(bp - &Bookmarks[0]));
 	}
     }
 
@@ -1250,14 +1246,6 @@ setpaths (
 
 /*****************************************************************************/
 
-static int
-prefix(const char *str, const char *pfx)
-{
-    while (*pfx && *str == *pfx)
-	str++, pfx++;
-    return *str == 0;
-}
-
 static void
 setmarks(char *str)
 {
@@ -1478,17 +1466,28 @@ conv(
 	    case 'D':			/* drawing functions */
 		    endtext();
 		    getdraw();
-		    if ( size != lastsize || size == FRACTSIZE &&
-			    fractsize != lastfractsize ||
+		    if ( size != lastsize || (size == FRACTSIZE &&
+			    fractsize != lastfractsize) ||
 			    horscale != lasthorscale) {
 			subfont = 0;
 			t_sf(0);
 		    }
 		    switch ((c=getc(fp))) {
 			case 'p':	/* draw a path */
-			case 'P':	/* should be solid */
 			    while (fscanf(fp, "%d %d", &n, &m) == 2)
 				drawline(n, m);
+			    lineno++;
+			    break;
+
+			case 'P':	/* solid polygon */
+			    fprintf(tf, "newpath %d %d neg moveto\n", hpos,
+				vpos);
+			    while (fscanf(fp, "%d %d", &n, &m) == 2) {
+				hpos += n;
+				vpos += m;
+				fprintf(tf, "%d %d neg lineto\n", hpos, vpos);
+			    }
+			    fprintf(tf, "closepath fill\n");
 			    lineno++;
 			    break;
 
@@ -1499,15 +1498,15 @@ conv(
 			    break;
 
 			case 'c':	/* circle */
-			case 'C':	/* should be filled */
+			case 'C':	/* filled circle */
 			    fscanf(fp, "%d", &n);
-			    drawcirc(n);
+			    drawcirc(n, c);
 			    break;
 
 			case 'e':	/* ellipse */
-			case 'E':	/* should be filled */
+			case 'E':	/* filled ellipse */
 			    fscanf(fp, "%d %d", &m, &n);
-			    drawellip(m, n);
+			    drawellip(m, n, c);
 			    break;
 
 			case 'a':	/* counter-clockwise arc */
@@ -1633,7 +1632,7 @@ devcntrl(
 
 
     char	str[4096], *buf, str1[4096];
-    int		c, n, size;
+    int		c, n, sz;
 
 
 /*
@@ -1647,7 +1646,7 @@ devcntrl(
  */
 
 
-    buf = malloc(size = 4096);
+    buf = malloc(sz = 4096);
     sget(str, sizeof str, fp);		/* get the control function name */
 
     switch ( str[0] )  {		/* only the first character counts */
@@ -1664,10 +1663,10 @@ devcntrl(
 		 * it does not work when DESC is a text file because
 		 * the fonts are in a different directory.
 		 */
-		if (dev.afmfonts || devname[0] == 'p' && devname[1] == 's')
+		if (dev.afmfonts || (devname[0] == 'p' && devname[1] == 's'))
 		    realdev = devname;
 		else
-		    strcpy(devname, realdev);
+		    n_strcpy(devname, realdev, sizeof(devname));
 		break;
 
 	case 't':			/* trailer */
@@ -1689,7 +1688,7 @@ devcntrl(
 	case 'f':			/* load font in a position */
 		fscanf(fp, "%d", &n);
 		sget(str, sizeof str, fp);
-		fgets(buf, size, fp);	/* in case there's a filename */
+		fgets(buf, sz, fp);	/* in case there's a filename */
 		ungetc('\n', fp);	/* fgets() goes too far */
 		str1[0] = '\0';		/* in case there's nothing to come in */
 		c = 0;
@@ -1729,15 +1728,15 @@ devcntrl(
 		    ungetc(c, fp);
 		n = 0;
 		for (;;) {
-		    fgets(&buf[n], size - n, fp);
+		    fgets(&buf[n], sz - n, fp);
 		    if ((c = getc(fp)) != '+') {
 			ungetc(c, fp);
 			break;
 		    }
 		    while (buf[n])
 			n++;
-		    if (size - n < 4096)
-			buf = realloc(buf, size += 4096);
+		    if (sz - n < 4096)
+			buf = realloc(buf, sz += 4096);
 		    lineno++;
 		}
 		if ( strcmp(str, "PI") == 0 || strcmp(str, "PictureInclusion") == 0 )
@@ -1768,6 +1767,10 @@ devcntrl(
 		    t_linkcolor(buf);
 		else if ( strcmp(str, "SetLinkBorder") == 0 )
 		    t_linkborder(buf);
+		else if ( strcmp(str, "SetBorderStyle") == 0 )
+		    linkborderstyle = t_linkborderstyle(buf);
+		else if ( strcmp(str, "SetUBorderStyle") == 0 )
+		    ulinkborderstyle = t_linkborderstyle(buf);
 		else if ( strcmp(str, "ULink") == 0 )
 		    t_ulink(buf);
 		else if ( strcmp(str, "SetULinkColor") == 0 )
@@ -1849,6 +1852,8 @@ fontinit(void)
  */
 
 
+    snprintf(temp, sizeof temp, "%s/dev%s/FONTMAP", fontdir, devname);
+    rdftmap(temp);
     snprintf(temp, sizeof temp, "%s/dev%s/DESC", fontdir, devname);
     if ( (descp = readdesc(temp)) == 0 )
 	error(FATAL, "can't open tables for %s", temp);
@@ -1889,7 +1894,7 @@ fontinit(void)
 void
 loadfont (
     int n,			/* load this font position */
-    char *s,			/* with the file for this font */
+    const char *s,		/* with the file for this font */
     char *s1,			/* taken from here - possibly */
     int forcespecial,		/* this is definitively a special font */
     int spec			/* map specification */
@@ -1902,7 +1907,7 @@ loadfont (
     char	*fpout = NULL;		/* for reading *s file */
     int		fin;			/* for reading *s.afm file */
     int		nw;			/* number of width table entries */
-    char	*p;
+    const char	*p;
     char	*path;
 
 
@@ -1947,8 +1952,8 @@ loadfont (
 	    p = s;
 	else
 	    p++;
-	if (p[0] == 'S' && (p[1] == '\0' || digitchar(p[1]&0377) &&
-		p[2] == '\0' || p[2] == '.'))
+	if (p[0] == 'S' && (p[1] == '\0' || (digitchar(p[1]&0377) &&
+		p[2] == '\0') || p[2] == '.'))
 	    forcespecial = 1;
 	for (i = 0; i < afmcount; i++)
 	    if (afmfonts[i] && strcmp(afmfonts[i]->path, path) == 0 &&
@@ -1966,8 +1971,7 @@ loadfont (
 	    goto fail;
 	}
 	close(fin);
-	a->path = malloc(strlen(path) + 1);
-	strcpy(a->path, path);
+	a->path = strdup(path);
 	if (path != temp)
 	    free(path);
 	a->file = s;
@@ -2072,7 +2076,7 @@ loadspecial(void)
 
 
 /*****************************************************************************/
-char *defaultFonts[] =
+static const char *defaultFonts[] =
 	{ "R", "I", "B", "BI", "CW", "H", "HB", "HX", "S1", "S", NULL };
 
 void
@@ -2139,9 +2143,9 @@ fontprint (
 /*****************************************************************************/
 
 
-char *
+const char *
 mapfont (
-    char *name			/* troff wanted this font */
+    const char *name			/* troff wanted this font */
 )
 
 
@@ -2160,6 +2164,7 @@ mapfont (
  */
 
 
+    name = mapft(name);
     for ( i = 0; fontmap[i].name != NULL; i++ )
 	if ( strcmp(name, fontmap[i].name) == 0 )
 	    return(fontmap[i].use);
@@ -2218,8 +2223,10 @@ getdevmap(void)
 	    if ( temp[0] != '#' && strlen(temp) < 3 )
 		if ( sget(&temp[3], sizeof temp - 3, fp) == 1 &&
 				strlen(&temp[3]) < 3 )  {
-		    strcpy((devfontmap + i)->name, temp);
-		    strcpy((devfontmap + i)->use, &temp[3]);
+		    n_strcpy((devfontmap + i)->name, temp,
+		        sizeof(devfontmap->name));
+		    n_strcpy((devfontmap + i)->use, &temp[3],
+		        sizeof(devfontmap->use));
 		    if ( ++i % 10 == 0 )
 			devfontmap = (Devfontmap *) realloc(devfontmap, (i + 10) * sizeof(Devfontmap));
 		}   /* End if */
@@ -2361,7 +2368,7 @@ t_init(void)
 	if (eflag == 0)
 	    realencoding = encoding = dev.encoding;
 	if (encoding == 5) {
-	    LanguageLevel = MAX(LanguageLevel, 2);
+	    LanguageLevel = max(LanguageLevel, 2);
 	    Binary++;
 	}
 	slop = pointslop * res / POINTS + .5;
@@ -2404,14 +2411,14 @@ static struct supplylist {
 } *supplylist;
 
 void
-t_supply(char *font)		/* supply a font */
+t_supply(char *fnt)		/* supply a font */
 {
     struct supplylist	*sp;
     char	*np, *file, *type = NULL, c;
 
-    while (*font == ' ' || *font == '\t')
-	font++;
-    for (np = font; *np && *np != ' ' && *np != '\t' && *np != '\n'; np++);
+    while (*fnt == ' ' || *fnt == '\t')
+	fnt++;
+    for (np = fnt; *np && *np != ' ' && *np != '\t' && *np != '\n'; np++);
     if (*np == '\0' || *np == '\n')
 	return;
     *np = '\0';
@@ -2430,10 +2437,10 @@ t_supply(char *font)		/* supply a font */
 	*np = '\0';
     }
     for (sp = supplylist; sp; sp = sp->next)
-	if (strcmp(sp->font, font) == 0)
+	if (strcmp(sp->font, fnt) == 0)
 	    return;
     sp = calloc(1, sizeof *sp);
-    sp->font = strdup(font);
+    sp->font = strdup(fnt);
     sp->file = afmdecodepath(file);
     sp->type = type && *type ? strdup(type) : NULL;
     sp->next = supplylist;
@@ -2454,11 +2461,11 @@ static const char ps_truetypefont[] = "%!PS-TrueTypeFont";
 static const char hex[] = "0123456789abcdef";
 
 static void
-supplypfb(char *font, char *path, FILE *fp)
+supplypfb(char *fnt, char *path, FILE *fp)
 {
     char	buf[30];
-    long	length;
-    int	i, c = EOF, n, type = 0, lastc = EOF;
+    size_t	i, n, length;
+    int		c = EOF, type = 0, lastch = EOF;
 
     if (fread(buf, 1, 6, fp) != 6)
 	error(FATAL, "no data in %s", path);
@@ -2479,10 +2486,10 @@ supplypfb(char *font, char *path, FILE *fp)
 	   length--;
     }
     if (sfcount++ == 0)
-        fprintf(sf, "%%%%DocumentSuppliedResources: font %s\n", font);
+        fprintf(sf, "%%%%DocumentSuppliedResources: font %s\n", fnt);
     else
-        fprintf(sf, "%%%%+ font %s\n", font);
-    fprintf(rf, "%%%%BeginResource: font %s\n", font);
+        fprintf(sf, "%%%%+ font %s\n", fnt);
+    fprintf(rf, "%%%%BeginResource: font %s\n", fnt);
     for (;;) {
     	switch (type) {
     	case 1:
@@ -2495,13 +2502,13 @@ supplypfb(char *font, char *path, FILE *fp)
     			    else
 	    		        length--;
 			    putc('\n', rf);
-			    lastc = '\n';
+			    lastch = '\n';
 			    break;
 		    case 0:
 		   	    continue;
 		    default:
 			    putc(c, rf);
-			    lastc = c;
+			    lastch = c;
 		    }
 	    	}
 	    	if (c == EOF)
@@ -2517,12 +2524,12 @@ supplypfb(char *font, char *path, FILE *fp)
 			putc(hex[buf[i]&017], rf);
 		    }
 	    	    putc('\n', rf);
-		    lastc = '\n';
+		    lastch = '\n';
 		    length -= n;
 	    	}
 	    	break;
     	case 3:
-		if (lastc != '\n')
+		if (lastch != '\n')
 		    putc('\n', rf);
     		fprintf(rf, "%%%%EndResource\n");
 		fclose(fp);
@@ -2540,24 +2547,23 @@ supplypfb(char *font, char *path, FILE *fp)
 }
 
 static void
-supplyotf(char *font, char *path, FILE *fp)
+supplyotf(char *fnt, char *path, FILE *fp)
 {
     static int	cffcount;
     struct stat	st;
     char	*contents;
-    size_t	size, offset, length;
-    int	i;
+    size_t	sz, offset, length, i;
     int	fsType;
     const char StartData[] = " StartData ";
 
     if (fstat(fileno(fp), &st) < 0)
 	error(FATAL, "cannot stat %s", path);
-    size = st.st_size;
-    contents = malloc(size);
-    if (fread(contents, 1, size, fp) != size)
+    sz = st.st_size;
+    contents = malloc(sz);
+    if (fread(contents, 1, sz, fp) != sz)
 	error(FATAL, "cannot read %s", path);
     fclose(fp);
-    if ((fsType = otfcff(path, contents, size, &offset, &length)) < 0) {
+    if ((fsType = otfcff(path, contents, sz, &offset, &length)) < 0) {
 	free(contents);
 	return;
     }
@@ -2573,19 +2579,19 @@ supplyotf(char *font, char *path, FILE *fp)
 	needresource("procset FontSetInit 0 0");
     }
     if (sfcount++ == 0)
-        fprintf(sf, "%%%%DocumentSuppliedResources: font %s\n", font);
+        fprintf(sf, "%%%%DocumentSuppliedResources: font %s\n", fnt);
     else
-        fprintf(sf, "%%%%+ font %s\n", font);
-    fprintf(rf, "%%%%BeginResource: font %s\n", font);
+        fprintf(sf, "%%%%+ font %s\n", fnt);
+    fprintf(rf, "%%%%BeginResource: font %s\n", fnt);
     fprintf(rf, "/FontSetInit /ProcSet findresource begin\n");
     if (encoding == 5) {
 	fprintf(rf, "%%%%BeginData: %ld Binary Bytes\n",
-		(long)(length + 13 + strlen(font) + 12));
-	fprintf(rf, "/%s %12ld StartData ", font, (long)length);
+		(long)(length + 13 + strlen(fnt) + 12));
+	fprintf(rf, "/%s %12ld StartData ", fnt, (long)length);
 	fwrite(&contents[offset], 1, length, rf);
 	fprintf(rf, "\n%%%%EndData\n");
     } else {
-	fprintf(rf, "/%s %ld ", font, (long)length);
+	fprintf(rf, "/%s %ld ", fnt, (long)length);
 	fprintf(rf, "currentfile /ASCIIHexDecode filter cvx exec\n");
 	for (i = 0; StartData[i]; i++) {
 	    putc(hex[(StartData[i]&0360)>>4], rf);
@@ -2602,39 +2608,39 @@ supplyotf(char *font, char *path, FILE *fp)
     }
     fprintf(rf, "%%%%EndResource\n");
     free(contents);
-    LanguageLevel = MAX(LanguageLevel, 3);
+    LanguageLevel = max(LanguageLevel, 3);
 }
 
 static void
-supplyttf(char *font, char *path, FILE *fp)
+supplyttf(char *fnt, char *path, FILE *fp)
 {
     struct stat	st;
     char	*contents;
-    size_t	size;
+    size_t	sz;
 
     if (fstat(fileno(fp), &st) < 0)
 	error(FATAL, "cannot stat %s", path);
-    size = st.st_size;
-    contents = malloc(size);
-    if (fread(contents, 1, size, fp) != size)
+    sz = st.st_size;
+    contents = malloc(sz);
+    if (fread(contents, 1, sz, fp) != sz)
 	error(FATAL, "cannot read %s", path);
     fclose(fp);
     if (sfcount++ == 0)
-	fprintf(sf, "%%%%DocumentSuppliedResources: font %s\n", font);
+	fprintf(sf, "%%%%DocumentSuppliedResources: font %s\n", fnt);
     else
-	fprintf(sf, "%%%%+ font %s\n", font);
-    fprintf(rf, "%%%%BeginResource: font %s\n", font);
-    otft42(font, path, contents, size, rf);
+	fprintf(sf, "%%%%+ font %s\n", fnt);
+    fprintf(rf, "%%%%BeginResource: font %s\n", fnt);
+    otft42(fnt, path, contents, sz, rf);
     fprintf(rf, "%%%%EndResource\n");
     free(contents);
-    LanguageLevel = MAX(LanguageLevel, 2);
+    LanguageLevel = max(LanguageLevel, 2);
 }
 
 static void
-supply1(char *font, char *file, char *type)
+supply1(char *fnt, char *file, char *type)
 {
     FILE *fp;
-    char line[4096], c;
+    char linebuf[4096], c;
 
     if (strchr(file, '/') == 0) {
     	snprintf(temp, sizeof temp, "%s/dev%s/%s.%s",
@@ -2650,48 +2656,48 @@ supply1(char *font, char *file, char *type)
 		c == 0 || c == 't' ? "ttf" : "anything";
     }
     if (strcmp(type, "pfb") == 0) {
-	supplypfb(font, file, fp);
+	supplypfb(fnt, file, fp);
 	return;
     }
     if (strcmp(type, "otf") == 0) {
-	supplyotf(font, file, fp);
+	supplyotf(fnt, file, fp);
 	return;
     }
     if (strcmp(type, "ttf") == 0) {
-	supplyttf(font, file, fp);
+	supplyttf(fnt, file, fp);
 	return;
     }
-    if (fgets(line, sizeof line, fp) == NULL)
+    if (fgets(linebuf, sizeof linebuf, fp) == NULL)
         error(FATAL, "missing data in %s", file);
-    if (strncmp(line, ps_adobe_font_, strlen(ps_adobe_font_)) &&
-	    strncmp(line, ps_truetypefont, strlen(ps_truetypefont)))
+    if (strncmp(linebuf, ps_adobe_font_, strlen(ps_adobe_font_)) &&
+	    strncmp(linebuf, ps_truetypefont, strlen(ps_truetypefont)))
 	error(FATAL, "file %s does not start with \"%s\" or \"%s\"",
 			    file, ps_adobe_font_, ps_truetypefont);
     if (sfcount++ == 0)
-        fprintf(sf, "%%%%DocumentSuppliedResources: font %s\n", font);
+        fprintf(sf, "%%%%DocumentSuppliedResources: font %s\n", fnt);
     else
-        fprintf(sf, "%%%%+ font %s\n", font);
-    fprintf(rf, "%%%%BeginResource: font %s\n", font);
-    while (fgets(line, sizeof line, fp) != NULL)
-	fputs(line, rf);
+        fprintf(sf, "%%%%+ font %s\n", fnt);
+    fprintf(rf, "%%%%BeginResource: font %s\n", fnt);
+    while (fgets(linebuf, sizeof linebuf, fp) != NULL)
+	fputs(linebuf, rf);
     fclose(fp);
     fprintf(rf, "%%%%EndResource\n");
 }
 
 static void
-t_dosupply(const char *font)
+t_dosupply(const char *fnt)
 {
     struct supplylist	*sp;
 
     for (sp = supplylist; sp; sp = sp->next)
-	if (strcmp(sp->font, font) == 0) {
+	if (strcmp(sp->font, fnt) == 0) {
 	    if (sp->done == 0) {
 		supply1(sp->font, sp->file, sp->type);
 		sp->done = 1;
 	    }
 	    return;
 	}
-    needresource("font %s", font);
+    needresource("font %s", fnt);
 }
 
 /*****************************************************************************/
@@ -3118,7 +3124,7 @@ printencsep(int *colp)
 static int *
 printencvector(struct afmtab *a)
 {
-    int	i, j, k, n, col = 0, s, w;
+    int	i, j, k, n, col = 0, s;
     int	*encmap = NULL;
 
     fprintf(gf, "/Encoding-@%s@0 [\n", a->Font.intname);
@@ -3128,7 +3134,6 @@ printencvector(struct afmtab *a)
      * for later squeezing of characters >= 0400.
      */
     s = 128 - 32;
-    w = 128;
     encmap = calloc(256 + nchtab + a->nchars, sizeof *encmap);
     col += fprintf(gf, "/.notdef");
     printencsep(&col);
@@ -3142,7 +3147,7 @@ printencvector(struct afmtab *a)
 		k < a->nchars &&
 		a->nametab[k] != NULL) {
 	    encmap[s - 128 + 32] = j;
-	    col += fprintf(gf, "/%s", a->nametab[k]);
+	    col += fprintenc(gf, a->nametab[k]);
 	    printencsep(&col);
 	    s++;
 	} else {
@@ -3155,7 +3160,7 @@ printencvector(struct afmtab *a)
     for (i = 1; i < a->nchars + 128 - 32 + nchtab && i < 256 - 32; i++) {
 	if (i < 128 - 32 && (k = a->fitab[i]) != 0 && k < a->nchars &&
 		a->nametab[k] != NULL) {
-	    col += fprintf(gf, "/%s", a->nametab[k]);
+	    col += fprintenc(gf, a->nametab[k]);
 	    printencsep(&col);
 	} else {
 	    while (s < a->nchars + 128 - 32 + nchtab &&
@@ -3167,7 +3172,7 @@ printencvector(struct afmtab *a)
 			k < a->nchars &&
 			a->nametab[k] != NULL) {
 		encmap[s - 128 + 32] = i + 32;
-		col += fprintf(gf, "/%s", a->nametab[k]);
+		col += fprintenc(gf, a->nametab[k]);
 		printencsep(&col);
 		s++;
 	    } else {
@@ -3191,7 +3196,7 @@ printencvector(struct afmtab *a)
 		    k < a->nchars &&
 		    a->nametab[k] != NULL) {
 	        encmap[s - 128 + 32] = i | n << 8;
-	        col += fprintf(gf, "/%s", a->nametab[k]);
+	        col += fprintenc(gf, a->nametab[k]);
 	        printencsep(&col);
 	        s++;
 	    } else {
@@ -3297,7 +3302,7 @@ t_sf(int forceflush)
 	    fprintf(tf, "%d %g changefont\n", fontname[font].fontslant, (fontname[font].fontheight != 0) ? (double)fontname[font].fontheight : (double)fractsize);
     }
 
-    if (tracked < 0 || tracked > 0 && forceflush)
+    if (tracked < 0 || (tracked > 0 && forceflush))
 	t_strack();
 
 }   /* End of t_sf */
@@ -3360,7 +3365,7 @@ t_slant (
 
 void
 t_reset (
-    int c			/* pause or restart */
+    int c __unused	/* pause or restart */
 )
 
 
@@ -3681,7 +3686,7 @@ oprep(int stext)
 	endtext();
 
     if ( font != lastfont || size != lastsize || subfont != lastsubfont ||
-	    size == FRACTSIZE && fractsize != lastfractsize ||
+	    (size == FRACTSIZE && fractsize != lastfractsize) ||
 	    horscale != lasthorscale) {
 	t_sf(0);
     }
@@ -3694,7 +3699,7 @@ oprep(int stext)
     if (stext) {
         starttext();
 
-        if ( ABS(hpos - lastx) > slop )
+        if ( fabsf(hpos - lastx) > slop )
 	    endstring();
     }
     wordspace = 0;
@@ -4223,6 +4228,7 @@ charlib (
 
     char	*name;			/* name of the character */
     char	tname[10];		/* in case it's a single ASCII character */
+    const char	*filename;              /* real file name */
 
 
 /*
@@ -4252,9 +4258,19 @@ charlib (
 	name = tname;
     } else name = &chname[chtab[lastc - 128]];
 
+    /*
+     * This is just a kludge of course.  But since only one file exists which
+     * needs a name mapping, no more general method had been implemented.
+     */
+
+    if (*name == 'L' && name[1] == 'H' && !name[2])
+    	filename = "LH_uc";
+    else
+    	filename = name;
+
     if ( downloaded[lastc] == 0 )  {
 	snprintf(temp, sizeof temp, "%s/dev%s/charlib/%s",
-	    fontdir, realdev, name);
+	    fontdir, realdev, filename);
 	if ( access(temp, 04) == 0 && doglobal(temp) == TRUE )  {
 	    downloaded[lastc] = 1;
 	    t_sf(0);
@@ -4282,7 +4298,7 @@ charlib (
 
 int 
 doglobal (
-    char *name			/* copy this to the output - globally */
+    const char *name			/* copy this to the output - globally */
 )
 
 
@@ -4468,7 +4484,7 @@ mbs2pdf(char *mp)
     }
 #ifdef	EUC
     ustr = malloc(sz = 16);
-    c = i = sprintf(ustr, "<FEFF");
+    c = i = snprintf(ustr, sz, "<FEFF");
     while (mp += n, *mp) {
 	if ((n = mbtowc(&wc, mp, mb_cur_max)) <= 0) {
 	    error(NON_FATAL,
@@ -4483,7 +4499,7 @@ mbs2pdf(char *mp)
 	}
 	if (i + 8 >= sz)
 	    ustr = realloc(ustr, sz += 16);
-	w = sprintf(&ustr[i], "%04X", (int)wc);
+	w = snprintf(&ustr[i], sz - i * sizeof(*ustr), "%04X", (int)wc);
 	i += w;
 	c += w;
 	if (c >= 60) {
@@ -4560,7 +4576,7 @@ orderbookmarks(void)
 
     int	counts[MAXBOOKMARKLEVEL+1];
     int	refs[MAXBOOKMARKLEVEL+1];
-    int	i, j, k, t;
+    size_t	i, j, k, t;
     int	lvl = 0;
 
 /*
@@ -4616,8 +4632,8 @@ pref(const char *lp, FILE *fp)
     int	c;
 
     while ((c = *lp++ & 0377) != 0 && c != '\n') {
-	if (c >= '0' && c <= '9' || c >= 'a' && c <= 'z' ||
-		c >= 'A' && c <= 'Z')
+	if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z'))
 	    putc(c, fp);
 	else
 	    fprintf(fp, "$%2x", c);
@@ -4656,6 +4672,15 @@ t_anchor(char *lp)
 static char linkcolor[60] = "0 0 1";
 static char linkborder[60] = "0 0 1";
 
+static char *
+t_linkborderstyle(char *arg) {
+	char c, *s;
+	s = arg;
+	for (s = arg; (c = *s) && c != '\n'; s++);
+	*s = 0;
+	return strdup(arg);
+}
+
 static void
 t_link(char *lp)
 {
@@ -4681,12 +4706,15 @@ t_link(char *lp)
 		    pref(lp, tf);
 		    fprintf(tf, "\n"
 			"/Rect [%d %d %d %d]\n"
-			"/Color [%s]\n"
-			"/Border [%s]\n"
-			"/Subtype /Link\n"
-			"/ANN pdfmark\n",
-			llx, -lly, urx, -ury,
-			linkcolor, linkborder);
+			"/Color [%s]\n",
+			llx, -lly, urx, -ury, linkcolor);
+		if (linkborderstyle)
+			fprintf(tf, "/BS << %s >>\n", linkborderstyle);
+		else
+			fprintf(tf, "/Border [%s]\n", linkborder);
+		fprintf(tf,
+		    "/Subtype /Link\n"
+		    "/ANN pdfmark\n");
 		}
 	    }
 	}
@@ -4713,6 +4741,8 @@ t_linkborder(char *lp)
     by = strtod(lp, &lp);
     c = strtod(lp, &lp);
     snprintf(linkborder, sizeof linkborder, "%g %g %g", bx, by, c);
+    free(linkborderstyle);
+    linkborderstyle = NULL;
 }
 
 static char ulinkcolor[60] = "0 0 1";
@@ -4740,10 +4770,12 @@ t_ulink(char *lp)
 		    lp++;
 		    endtext();
 		    fprintf(tf, "[ /Rect [%d %d %d %d]\n"
-			    "/Color [%s]\n"
-			    "/Border [%s]\n",
-			    llx, -lly, urx, -ury,
-			    ulinkcolor, ulinkborder);
+			    "/Color [%s]\n",
+			    llx, -lly, urx, -ury, ulinkcolor);
+		if (ulinkborderstyle)
+			fprintf(tf, "/BS << %s >>\n", ulinkborderstyle);
+		else
+			fprintf(tf, "/Border [%s]\n", ulinkborder);
 		    fprintf(tf, "/Action << /Subtype /URI\n"
 			    "/URI (");
 		    pref_uri(lp, tf);
@@ -4776,4 +4808,6 @@ t_ulinkborder(char *lp)
     by = strtod(lp, &lp);
     c = strtod(lp, &lp);
     snprintf(ulinkborder, sizeof ulinkborder, "%g %g %g", bx, by, c);
+    free(ulinkborderstyle);
+    ulinkborderstyle = NULL;
 }

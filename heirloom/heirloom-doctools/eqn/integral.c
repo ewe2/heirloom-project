@@ -21,8 +21,14 @@
  * Sccsid @(#)integral.c	1.5 (gritter) 10/19/06
  */
 
-# include "e.h"
-# include "e.def"
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
+#include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 integral(int p, int p1, int p2) {
@@ -50,19 +56,19 @@ integral(int p, int p1, int p2) {
 
 void
 setintegral(void) {
-	char *f;
+	const char *f;
 
-	yyval = oalloc();
+	yyval.token = oalloc();
 	f = "\\(is";
 #ifndef NEQN
 	printf(".ds %d \\s%s\\v'.1m'\\s+4%s\\s-4\\v'-.1m'\\s%s\n", 
-		yyval, tsize(ps), f, tsize(ps));
-	eht[yyval] = VERT(EM(1.15, ps+4));
-	ebase[yyval] = VERT(EM(0.3, ps));
+		yyval.token, tsize(ps), f, tsize(ps));
+	eht[yyval.token] = VERT(EM(1.15, ps+4));
+	ebase[yyval.token] = VERT(EM(0.3, ps));
 #else /* NEQN */
-	printf(".ds %d %s\n", yyval, f);
-	eht[yyval] = VERT(2);
-	ebase[yyval] = 0;
+	printf(".ds %d %s\n", yyval.token, f);
+	eht[yyval.token] = VERT(2);
+	ebase[yyval.token] = 0;
 #endif /* NEQN */
-	lfont[yyval] = rfont[yyval] = ROM;
+	lfont[yyval.token] = rfont[yyval.token] = ROM;
 }

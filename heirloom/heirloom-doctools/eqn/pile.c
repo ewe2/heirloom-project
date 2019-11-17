@@ -21,7 +21,14 @@
  * Sccsid @(#)pile.c	1.4 (gritter) 10/29/05
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 # include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 lpile(int type, int p1, int p2) {
@@ -31,7 +38,7 @@ lpile(int type, int p1, int p2) {
 #else	/* NEQN */
 	int h, b, bi, hi, gap;
 #endif	/* NEQN */
-	yyval = oalloc();
+	yyval.token = oalloc();
 #ifndef NEQN
 	gap = VERT(EM(0.4, ps)); /* 4/10 m between blocks */
 #else /* NEQN */
@@ -44,39 +51,39 @@ lpile(int type, int p1, int p2) {
 	h = 0;
 	for( i=p1; i<p2; i++ )
 		h += eht[lp[i]];
-	eht[yyval] = h + (nlist-1)*gap;
+	eht[yyval.token] = h + (nlist-1)*gap;
 	b = 0;
 	for( i=p2-1; i>mid; i-- )
 		b += eht[lp[i]] + gap;
-	ebase[yyval] = (nlist%2) ? b + ebase[lp[mid]]
+	ebase[yyval.token] = (nlist%2) ? b + ebase[lp[mid]]
 #ifndef NEQN
 			: b - VERT(EM(0.5, ps)) - gap;
 #else /* NEQN */
 			: b - VERT(1) - gap;
 #endif /* NEQN */
 	if(dbg) {
-		printf(".\tS%d <- %c pile of:", yyval, type);
+		printf(".\tS%d <- %c pile of:", yyval.token, type);
 		for( i=p1; i<p2; i++)
 			printf(" S%d", lp[i]);
 #ifndef	NEQN
-		printf(";h=%g b=%g\n", eht[yyval], ebase[yyval]);
+		printf(";h=%g b=%g\n", eht[yyval.token], ebase[yyval.token]);
 #else	/* NEQN */
-		printf(";h=%d b=%d\n", eht[yyval], ebase[yyval]);
+		printf(";h=%d b=%d\n", eht[yyval.token], ebase[yyval.token]);
 #endif	/* NEQN */
 	}
 	nrwid(lp[p1], ps, lp[p1]);
-	printf(".nr %d \\n(%d\n", yyval, lp[p1]);
+	printf(".nr %d \\n(%d\n", yyval.token, lp[p1]);
 	for( i = p1+1; i<p2; i++ ) {
 		nrwid(lp[i], ps, lp[i]);
 		printf(".if \\n(%d>\\n(%d .nr %d \\n(%d\n", 
-			lp[i], yyval, yyval, lp[i]);
+			lp[i], yyval.token, yyval.token, lp[i]);
 	}
 #ifndef	NEQN
-	printf(".ds %d \\v'%gp'\\h'%du*\\n(%du'\\\n", yyval, ebase[yyval], 
-		type=='R' ? 1 : 0, yyval);
+	printf(".ds %d \\v'%gp'\\h'%du*\\n(%du'\\\n", yyval.token, ebase[yyval.token], 
+		type=='R' ? 1 : 0, yyval.token);
 #else	/* NEQN */
-	printf(".ds %d \\v'%du'\\h'%du*\\n(%du'\\\n", yyval, ebase[yyval], 
-		type=='R' ? 1 : 0, yyval);
+	printf(".ds %d \\v'%du'\\h'%du*\\n(%du'\\\n", yyval.token, ebase[yyval.token], 
+		type=='R' ? 1 : 0, yyval.token);
 #endif	/* NEQN */
 	for(i = p2-1; i >=p1; i--) {
 		hi = eht[lp[i]]; 
@@ -105,26 +112,26 @@ lpile(int type, int p1, int p2) {
 	case '-':
 #ifndef	NEQN
 		printf("\\v'%gp'\\h'\\n(%du-\\n(%du/2u'\\*(%d", 
-			-bi, yyval, lp[i], lp[i]);
+			-bi, yyval.token, lp[i], lp[i]);
 		printf("\\h'-\\n(%du-\\n(%du/2u'\\v'0-%gp'\\\n", 
-			yyval, lp[i], hi-bi+gap);
+			yyval.token, lp[i], hi-bi+gap);
 #else	/* NEQN */
 		printf("\\v'%du'\\h'\\n(%du-\\n(%du/2u'\\*(%d", 
-			-bi, yyval, lp[i], lp[i]);
+			-bi, yyval.token, lp[i], lp[i]);
 		printf("\\h'-\\n(%du-\\n(%du/2u'\\v'0-%du'\\\n", 
-			yyval, lp[i], hi-bi+gap);
+			yyval.token, lp[i], hi-bi+gap);
 #endif	/* NEQN */
 		continue;
 		}
 	}
 #ifndef	NEQN
-	printf("\\v'%gp'\\h'%du*\\n(%du'\n", eht[yyval]-ebase[yyval]+gap, 
-		type!='R' ? 1 : 0, yyval);
+	printf("\\v'%gp'\\h'%du*\\n(%du'\n", eht[yyval.token]-ebase[yyval.token]+gap, 
+		type!='R' ? 1 : 0, yyval.token);
 #else	/* NEQN */
-	printf("\\v'%du'\\h'%du*\\n(%du'\n", eht[yyval]-ebase[yyval]+gap, 
-		type!='R' ? 1 : 0, yyval);
+	printf("\\v'%du'\\h'%du*\\n(%du'\n", eht[yyval.token]-ebase[yyval.token]+gap, 
+		type!='R' ? 1 : 0, yyval.token);
 #endif	/* NEQN */
 	for( i=p1; i<p2; i++ )
 		ofree(lp[i]);
-	lfont[yyval] = rfont[yyval] = 0;
+	lfont[yyval.token] = rfont[yyval.token] = 0;
 }

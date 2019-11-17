@@ -37,6 +37,14 @@
  */
 
 /*
+ * Changes Copyright (c) 2014 Carsten Kunze <carsten.kunze at arcor.de>
+ */
+
+/*
+ * Portions Copyright (c) 2017 Roy Fisher
+ */
+
+/*
  * University Copyright- Copyright (c) 1982, 1986, 1988
  * The Regents of the University of California
  * All Rights Reserved
@@ -56,7 +64,7 @@ extern	char	*obufp;
 extern	char	*xbufp;
 extern	char	*xeibuf;
 extern	char	*cfname[NSO+1];
-extern	char	devname[];
+extern	char	devname[20];
 extern	char	ibuf[IBUFSZ];
 extern	char	**mfiles;
 extern	char	*nextf;
@@ -69,7 +77,13 @@ extern	filep	nextb;
 extern	filep	offset;
 extern	filep	roff;
 extern	filep	woff;
+#ifdef NROFF
+extern	long	lvmot;
+extern	size_t	*chtab;
+#else
 extern	short	*chtab;
+extern	int	html;
+#endif
 extern	int	*pnp;
 extern	int	*pstab;
 extern	int	app;
@@ -77,6 +91,9 @@ extern	int	ascii;
 extern	int	bd;
 extern	int	*bdtab;
 extern	int	blmac;
+extern	int	lsmac;
+extern	int	glss;
+extern	int	lsn;
 extern	int	ccs;
 extern	int	charf;
 extern	tchar	**chartab;
@@ -146,7 +163,7 @@ extern	int	noscale;
 extern	int	npn;
 extern	int	npnflg;
 extern	int	nx;
-extern	int	oldbits;
+extern	unsigned int	oldbits;
 extern	struct contab	*oldmn;
 extern	int	*olt;
 extern	int	over;
@@ -243,10 +260,17 @@ extern	int	***lgrevtab;
 extern	int	spreadwarn;
 extern	int	spreadlimit;
 extern	int	lastrq;
+extern	int	noschr;
+extern	int	argdelim;
+extern	int	bol;
+extern	int	prdblesc;
+extern	int	gemu;
+extern	int	chomp;
+extern	int	chompend;
 
 /* n1.c */
 extern	void	mainloop(void);
-extern	int	tryfile(char *, char *, int);
+extern	int	tryfile(const char *, char *, int);
 extern	void	catch(int);
 extern	void	kcatch(int);
 extern	void	init0(void);
@@ -257,8 +281,8 @@ extern	int	ctoi(register char *);
 extern	void	mesg(int);
 extern	void	errprint(const char *, ...);
 #define	fdprintf	xxfdprintf
-extern	void	fdprintf(int, char *, ...);
-extern	char	*roff_sprintf(char *, char *, ...);
+extern	void	fdprintf(int, const char *, ...);
+extern	char	*roff_sprintf(char *, size_t, const char *, ...);
 extern	int	control(register int, register int);
 extern	int	getrq2(void);
 extern	int	getrq(int);
@@ -266,12 +290,13 @@ extern	tchar	getch(void);
 extern	void	setxon(void);
 extern	tchar	getch0(void);
 extern	void	pushback(register tchar *);
-extern	void	cpushback(register char *);
+extern	void	cpushback(register const char *);
 extern	tchar	*growpbbuf(void);
 extern	int	nextfile(void);
 extern	int	popf(void);
 extern	void	flushi(void);
 extern	int	getach(void);
+extern	int	getxch(void);
 extern	int	rgetach(void);
 extern	void	casenx(void);
 extern	int	getname(void);
@@ -296,7 +321,7 @@ extern	int	issame(tchar, tchar);
 extern	int	pchar(register tchar);
 extern	void	pchar1(register tchar);
 extern	void	outascii(tchar);
-extern	void	oputs(register char *);
+extern	void	oputs(register const char *);
 extern	void	flusho(void);
 extern	void	caseoutput(void);
 extern	void	done(int);
@@ -335,7 +360,6 @@ extern	tchar	popi(void);
 extern	int	pushi(filep, int, enum flags);
 extern	void	sfree(struct s *);
 extern 	struct s	*macframe(void);
-extern	char	*setbrk(int);
 extern	int	getsn(int);
 extern	int	setstr(void);
 extern	void	collect(void);
@@ -354,7 +378,7 @@ extern	void	casepc(void);
 extern	void	casechop(void);
 extern	void	casepm(void);
 extern	void	stackdump(void);
-extern	char	*macname(int);
+extern	const char	*macname(int);
 extern	int	maybemore(int, int);
 extern	tchar	setuc(void);
 extern	int	makerq(const char *);
@@ -369,12 +393,10 @@ extern	struct numtab	*usedr(register int);
 extern	int	fnumb(register int, register int (*)(tchar));
 extern	int	decml(register int, register int (*)(tchar));
 extern	int	roman(int, int (*)(tchar));
-extern	int	roman0(int, int (*)(tchar), char *, char *);
+extern	int	roman0(int, int (*)(tchar), const char *, const char *);
 extern	int	abc(int, int (*)(tchar));
 extern	int	abc0(int, int (*)(tchar));
-#undef	atoi
-#define	atoi	xxatoi
-extern	int	atoi(void);
+extern	int	hatoi(void);
 #undef	atof
 #define	atof	xxatof
 extern	float	atof(void);
@@ -427,6 +449,8 @@ extern	void	casehylen(void);
 extern	void	casehypp(void);
 extern	void	casepshape(void);
 extern	void	caselpfx(void);
+#undef min
+#undef max
 extern	int	max(int, int);
 extern	int	min(int, int);
 extern	void	casece(void);
@@ -461,6 +485,7 @@ extern	void	caseclose(void);
 extern	void	casesp(int);
 extern	void	casebrp(void);
 extern	void	caseblm(void);
+extern	void	caselsm(void);
 extern	void	casert(void);
 extern	void	caseem(void);
 extern	void	casefl(void);
@@ -473,6 +498,7 @@ extern	void	caseel(void);
 extern	void	caseie(void);
 extern	void	caseif(int);
 extern	void	casenop(void);
+extern	void	casechomp(void);
 extern	void	casereturn(void);
 extern	void	casewhile(void);
 extern	void	casebreak(void);
@@ -485,6 +511,8 @@ extern	void	caseec(void);
 extern	void	caseeo(void);
 extern	void	caseecs(void);
 extern	void	caseecr(void);
+extern	void	caseescoff(void);
+extern	void	caseescon(void);
 extern	void	caseta(void);
 extern	void	casene(void);
 extern	void	casetr(int);
@@ -573,3 +601,7 @@ extern	void	nodelim(int);
 extern	void	storerq(int);
 extern	int	fetchrq(tchar *);
 extern	void	morechars(int);
+#ifdef NROFF
+extern	void	caseutf8conv(void);
+extern	int	addch(char *);
+#endif

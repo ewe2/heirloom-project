@@ -93,8 +93,8 @@ double getcomp(obj *p, int t)	/* return component of a position */
 	return 0;
 }
 
-double	exprlist[100];
-int	nexpr	= 0;
+static double	exprlist[100];
+static int	nexpr	= 0;
 
 void exprsave(double f)
 {
@@ -105,7 +105,8 @@ char *sprintgen(char *fmt)
 {
 	char buf[1000];
 
-	sprintf(buf, fmt, exprlist[0], exprlist[1], exprlist[2], exprlist[3], exprlist[4]);
+	snprintf(buf, sizeof(buf), fmt, exprlist[0], exprlist[1], exprlist[2],
+	    exprlist[3], exprlist[4]);
 	nexpr = 0;
 	free(fmt);
 	return tostring(buf);
@@ -176,14 +177,13 @@ void printpos(obj *p)	/* print position for debugging */
 	printf("%g, %g\n", p->o_x, p->o_y);
 }
 
-char *tostring(char *s)
+char *tostring(const char *s)
 {
-	register char *p;
+	char *p;
 
-	p = malloc(strlen(s)+1);
+	p = strdup(s);
 	if (p == NULL)
 		FATAL("out of space in tostring on %s", s);
-	strcpy(p, s);
 	return(p);
 }
 

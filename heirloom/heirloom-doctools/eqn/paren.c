@@ -21,7 +21,14 @@
  * Sccsid @(#)paren.c	1.4 (gritter) 10/29/05
  */
 
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
 # include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 paren(int leftc, int p1, int rightc) {
@@ -32,9 +39,9 @@ paren(int leftc, int p1, int rightc) {
 	int v, h1, b1;
 #endif	/* NEQN */
 	h1 = eht[p1]; b1 = ebase[p1];
-	yyval = p1;
+	yyval.token = p1;
 #ifndef NEQN
-	lfont[yyval] = rfont[yyval] = 0;
+	lfont[yyval.token] = rfont[yyval.token] = 0;
 	n = (h1 + EM(1.0, EFFPS(ps)) - 1) / EM(1.0, EFFPS(ps));
 #else /* NEQN */
 	n = max(b1+VERT(1), h1-b1-VERT(1)) / VERT(1);
@@ -47,17 +54,17 @@ paren(int leftc, int p1, int rightc) {
 		m = n-3;
 	}
 #ifndef NEQN
-	eht[yyval] = VERT(EM(n, ps));
-	ebase[yyval] = b1 + (eht[yyval]-h1)/2;
+	eht[yyval.token] = VERT(EM(n, ps));
+	ebase[yyval.token] = b1 + (eht[yyval.token]-h1)/2;
 	v = b1 - h1/2 + VERT(EM(0.4, ps));
-	printf(".ds %d \\|\\v'%gp'", yyval, v);
+	printf(".ds %d \\|\\v'%gp'", yyval.token, v);
 #else /* NEQN */
-	eht[yyval] = VERT(2 * n);
-	ebase[yyval] = (n)/2 * VERT(2);
+	eht[yyval.token] = VERT(2 * n);
+	ebase[yyval.token] = (n)/2 * VERT(2);
 	if (n%2 == 0)
-		ebase[yyval] -= VERT(1);
+		ebase[yyval.token] -= VERT(1);
 	v = b1 - h1/2 + VERT(1);
-	printf(".ds %d \\|\\v'%du'", yyval, v);
+	printf(".ds %d \\|\\v'%du'", yyval.token, v);
 #endif /* NEQN */
 	switch( leftc ) {
 		case 'n':	/* nothing */
@@ -148,15 +155,15 @@ paren(int leftc, int p1, int rightc) {
 	printf("\n");
 #ifndef	NEQN
 	if(dbg)printf(".\tcurly: h=%g b=%g n=%d v=%g l=%c, r=%c\n", 
-		eht[yyval], ebase[yyval], n, v, leftc, rightc);
+		eht[yyval.token], ebase[yyval.token], n, v, leftc, rightc);
 #else	/* NEQN */
 	if(dbg)printf(".\tcurly: h=%d b=%d n=%d v=%d l=%c, r=%c\n", 
-		eht[yyval], ebase[yyval], n, v, leftc, rightc);
+		eht[yyval.token], ebase[yyval.token], n, v, leftc, rightc);
 #endif	/* NEQN */
 }
 
 void
-brack(int m, char *t, char *c, char *b) {
+brack(int m, const char *t, const char *c, const char *b) {
 	int j;
 	printf("\\b'%s", t);
 	for( j=0; j<m; j++)

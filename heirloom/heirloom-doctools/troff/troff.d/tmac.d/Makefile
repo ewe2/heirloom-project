@@ -1,12 +1,12 @@
 #
 # A BSD-compatible install command.
 #
-INSTALL=/usr/ucb/install
+INSTALL=install
 
 #
 # Packaging prefix.
 #
-PREFIX=/usr
+PREFIX=/usr/local
 
 #
 # Where to place binaries.
@@ -26,7 +26,7 @@ PUBDIR=$(PREFIX)/pub
 #
 # Where to place manual pages.
 #
-MANDIR=$(PREFIX)/share/man/5man
+MANDIR=$(PREFIX)/share/heirloom-doctools/man
 
 #
 # Where to place the troff macro packages.
@@ -68,22 +68,22 @@ EUC=-DEUC
 #
 # Binaries are stripped with this command after installation.
 #
-STRIP=strip -s -R .comment -R .note
+STRIP=strip
 
 #
 # The C compiler.
 #
-CC=cc
+#CC=
 
 #
 # The C++ compiler.
 #
-CCC=c++
+#CXX=
 
 #
 # Compiler flags.
 #
-CFLAGS=-O
+_CFLAGS=$(CFLAGS) $(_CPPFLAGS) $(__CDBG) $(__CLDBG)
 
 #
 # C preprocessor flags.
@@ -91,58 +91,58 @@ CFLAGS=-O
 # Use -D_GNU_SOURCE for Linux with GNU libc.
 # Use -D_INCLUDE__STDC_A1_SOURCE for HP-UX.
 #
-CPPFLAGS=-D_GNU_SOURCE
-
-#
-# Warning flags for the compiler.
-#
-#WARN=
+_CPPFLAGS=$(CPPFLAGS) -D_GNU_SOURCE
 
 #
 # Linker flags.
 #
-LDFLAGS=
+_LDFLAGS=$(LDFLAGS) $(__CLDBG)
 
 #
 # Additional libraries to link with.
 #
-LIBS=
+#LIBS=
 
 #
 # A Bourne-compatible shell.
 #
-SHELL=/home/ewe2/bin/heirloom-sh
-
-#
-# Run ranlib if it is in the current path. This should take care
-# of most situations. On Mac OS X, you need to uncomment "ranlib -c".
-#
-RANLIB=(hash ranlib) >/dev/null 2>&1 || exit 0; ranlib
-#RANLIB=ranlib -c
-MACS = acm.me bib chars.me deltext.me e eqn.me \
+SHELL=/bin/sh
+RELEASE = Git snapshot 190405
+#RELEASE = release 160308
+MACS=	acm.me bib chars.me deltext.me e eqn.me \
 	float.me footnote.me index.me local.me m mmn mmt ms.acc \
 	ms.cov ms.eqn ms.ref ms.tbl ms.ths ms.toc null.me refer.me \
 	s sh.me tbl.me thesis.me v vgrind \
 	an andoc doc doc-common doc-ditroff doc-nroff doc-syms \
-	pictures color pm srefs ptx safe g padj taa naa
+	pictures color pm srefs ptx safe g padj taa naa \
+	tmac.gchar an-ext
+
+MAN=	mcolor.7 mpictures.7 man.7 mdoc.7
 
 .SUFFIXES: .in
+
 .in:
 	sed 's:@MACDIR@:$(MACDIR):; s:@LIBDIR@:$(LIBDIR):' $< >$@
 
-all: $(MACS)
+all: $(MACS) $(MAN)
 
-install: all
-	test -d $(ROOT)$(MACDIR) || mkdir -p $(ROOT)$(MACDIR)
-	for i in $(MACS); \
-	do \
-		$(INSTALL) -c -m 644 $$i $(ROOT)$(MACDIR)/$$i || exit; \
+install: all $(ROOT)$(MACDIR) $(ROOT)$(MANDIR)/man7
+	for i in $(MACS); do \
+		$(INSTALL) -m 644 $$i $(ROOT)$(MACDIR)/ || exit; \
 	done
-	test -d $(ROOT)$(MANDIR)/man7 || mkdir -p $(ROOT)$(MANDIR)/man7
-	$(INSTALL) -c -m 644 mcolor.7 $(ROOT)$(MANDIR)/man7/mcolor.7
-	$(INSTALL) -c -m 644 mpictures.7 $(ROOT)$(MANDIR)/man7/mpictures.7
+	for i in $(MAN); do \
+		$(INSTALL) -m 644 $$i $(ROOT)$(MANDIR)/man7/ || exit; \
+	done
 
 clean:
-	rm -f andoc bib doc e g m s pm
+	rm -f andoc bib doc e g m s pm an doc-ditroff mcolor.7
 
 mrproper: clean
+
+mcolor.7: mcolor.7.in
+	sed -e 's"/usr/ucblib/doctools/font/devpost/postscript"$(ROOT)$(PSTDIR)"' \
+	    -e 's"/usr/ucblib/doctools/tmac"$(ROOT)$(MACDIR)"' \
+	    mcolor.7.in > $@
+
+$(ROOT)$(MACDIR) $(ROOT)$(MANDIR)/man7:
+	mkdir -p $@

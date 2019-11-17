@@ -25,10 +25,11 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <libgen.h>
+#include "global.h"
 
-char	*in;	/* input buffer */
-size_t	insize;	/* input buffer size */
-int noeqn;
+static char	*in;	/* input buffer */
+static size_t	insize;	/* input buffer size */
+static int noeqn;
 
 int
 main(int argc,char **argv) {
@@ -57,9 +58,14 @@ eqn(int argc,char **argv) {
 	init_tbl();	/* install keywords in tables */
 	while ((type=getline(&in, &insize)) != EOF) {
 		eqline = linect;
-		if (in[0]=='.' && in[1]=='E' && in[2]=='Q') {
-			for (i=11; i<100; used[i++]=0);
+		if (type == lefteq)
+			do_inline();
+		else if (*in == '.') {
+			char *p;
 			printf("%s",in);
+			for (p = in + 1; *p == ' ' || *p == '\t'; p++);
+			if (!*p || *p != 'E' || p[1] != 'Q') continue;
+			for (i=11; i<100; used[i++]=0);
 			printf(".nr 99 \\n(.s\n.nr 98 \\n(.f\n");
 			printf(".if \\n(.X .nrf 99 \\n(.s\n");
 			markline = 0;
@@ -82,10 +88,7 @@ eqn(int argc,char **argv) {
 			}
 			if (putchar(lastchar) != '\n')
 				while (putchar(gtc()) != '\n');
-		}
-		else if (type == lefteq)
-			do_inline();
-		else
+		} else
 			printf("%s",in);
 	}
 	return(0);
@@ -93,7 +96,8 @@ eqn(int argc,char **argv) {
 
 int
 getline(char **sp, size_t *np) {
-	register int c, n = 0, esc = 0, par = 0, brack = 0;
+	register int c, esc = 0, par = 0, brack = 0;
+	size_t n = 0;
 	char *xp;
 	for (;;) {
 		c = gtc();
@@ -112,7 +116,7 @@ getline(char **sp, size_t *np) {
 			esc++;
 		else {
 			if (c=='\n' || c==EOF ||
-					c==lefteq && !esc && !par && !brack)
+					(c==lefteq && !esc && !par && !brack))
 				break;
 			if (par)
 				par--;
@@ -223,11 +227,6 @@ putout(int p1) {
 
 }
 
-float
-max(float i,float j) {
-	return (i>j ? i : j);
-}
-
 int
 oalloc(void) {
 	int i;
@@ -285,7 +284,7 @@ setfile(int argc, char **argv) {
 }
 
 void
-yyerror(char *unused) {;}
+yyerror(char *unused __unused) {;}
 
 void
 init(void) {

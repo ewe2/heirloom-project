@@ -31,6 +31,10 @@
 #include "dev.h"
 #include "afm.h"
 
+#ifndef __unused
+#define	__unused __attribute__((unused))
+#endif
+
 extern	char		*chname;
 extern	short		*chtab;
 extern	int		nchtab;
@@ -44,9 +48,9 @@ static	void	addkernpair(struct afmtab *, char *_line);
 /*
  * This table maps troff special characters to PostScript names.
  */
-const struct names {
-	char	*trname;
-	char	*psname;
+static const struct names {
+	const char	*trname;
+	const char	*psname;
 } names[] = {
 	{ "hy",	"hyphen" },
 	{ "ct",	"cent" },
@@ -72,13 +76,16 @@ const struct names {
 	{ "12",	"onehalf" },
 	{ "14",	"onequarter" },
 	{ "34",	"threequarters" },
+	{ "aq", "quotesingle" },
+	{ "oq", "quoteleft" },
+	{ "cq", "quoteright" },
 	{ 0,	0 }
 };
 
 /*
  * Names for Symbol fonts only.
  */
-const struct names greeknames[] = {
+static const struct names greeknames[] = {
 	{ "*A",	"Alpha" },
 	{ "*B",	"Beta" },
 	{ "*C",	"Xi" },
@@ -130,7 +137,7 @@ const struct names greeknames[] = {
 	{ 0,	0 }
 };
 
-const struct names mathnames[] = {
+static const struct names mathnames[] = {
 	{ "!=",	"notequal" },
 	{ "**",	"asteriskmath" },
 	{ "+-",	"plusminus" },
@@ -143,7 +150,7 @@ const struct names mathnames[] = {
 	{ ">=",	"greaterequal" },
 	{ "O+",	"circleplus" },
 	{ "Ox",	"circlemultiply" },
-	{ "^",	"logicaland" },
+//	{ "^",	"logicaland" },
 	{ "al",	"aleph" },
 	{ "ap",	"similar" },
 	{ "bu",	"bullet" },
@@ -167,7 +174,7 @@ const struct names mathnames[] = {
 	{ "mu",	"multiply" },
 	{ "no",	"logicalnot" },
 	{ "or",	"bar" },
-	{ "or",	"logicalor" },
+//	{ "or",	"logicalor" },
 	{ "pd",	"partialdiff" },
 	{ "pl",	"plus" },
 	{ "pt",	"proportional" },
@@ -184,7 +191,7 @@ const struct names mathnames[] = {
 	{ 0,	0 },
 };
 
-const struct names largenames[] = {
+static const struct names largenames[] = {
 	{ "bv",	"braceex" },
 	{ "lb",	"braceleftbt" },
 	{ "lc",	"bracketlefttp" },
@@ -200,7 +207,7 @@ const struct names largenames[] = {
 	{ 0,	0 }
 };
 
-const struct names punctnames[] = {
+static const struct names punctnames[] = {
 	{ "or",	"bar" },
 	{ "\\-","endash" },
 	{ "aa","acute" },
@@ -213,7 +220,7 @@ const struct names punctnames[] = {
 /*
  * These names are only used with the S font.
  */
-const struct names Snames[] = {
+static const struct names Snames[] = {
 	{ "br",	"parenleftex" },
 	{ "ul",	"underscore" },
 	{ "vr",	"bracketleftex" },
@@ -223,7 +230,7 @@ const struct names Snames[] = {
 /*
  * These names are only used with the S1 font.
  */
-const struct names S1names[] = {
+static const struct names S1names[] = {
 	{ "ru",	"underscore" },
 	{ 0,	0 }
 };
@@ -481,8 +488,8 @@ static const struct asciimap	punctascii[] = {
  	{ 0x003E,	"greater" },
  	{ 0x0040,	"at" },
  	{ 0x005C,	"backslash" },
- 	{ 0x005E,	"circumflex" },
- 	{ 0x007E,	"tilde" },
+ 	{ 0x005E,	"asciicircum" },
+ 	{ 0x007E,	"asciitilde" },
 	{ 0,		NULL }
 };
 
@@ -496,7 +503,7 @@ nextprime(int n)
 		268435399, 536870909, 1073741789, 2147483647
 	};
 	int	mprime = 7;
-	int	i;
+	size_t	i;
 
 	for (i = 0; i < sizeof primes / sizeof *primes; i++)
 		if ((mprime = primes[i]) >= (n < 65536 ? n*4 :
@@ -527,7 +534,7 @@ struct namecache *
 afmnamelook(struct afmtab *a, const char *name)
 {
 	struct namecache	*np;
-	unsigned	h, c, n = 0;
+	int	h, c, n = 0;
 
 	h = pjw(name) % a->nameprime;
 	np = &a->namecache[c = h];
@@ -535,7 +542,12 @@ afmnamelook(struct afmtab *a, const char *name)
 		if (a->nametab[np->afpos] == 0 ||
 				strcmp(a->nametab[np->afpos], name) == 0)
 			break;
-		c += n&1 ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
+		h = (n + 1) / 2;
+		h *= h;
+		if (n & 1)
+			c -= h;
+		else
+			c += h;
 		n++;
 		while (c >= a->nameprime)
 			c -= a->nameprime;
@@ -617,14 +629,14 @@ afmremap(struct afmtab *a)
 		if (a->nametab[i]) {
 			tp = a->nametab[i];
 			a->nametab[i] = space;
-			while (*space++ = *tp++);
+			while ((*space++ = *tp++));
 		}
 	}
 }
 
 #ifndef	DUMP
 static int
-asciiequiv(int code, const char *psc, enum spec s)
+asciiequiv(int code __unused, const char *psc, enum spec s)
 {
 	int	i;
 
@@ -647,7 +659,7 @@ asciiequiv(int code, const char *psc, enum spec s)
 }
 
 static char *
-thisword(const char *text, const char *wrd)
+thisword(char *text, const char *wrd)
 {
 	while (*text == *wrd)
 		text++, wrd++;
@@ -657,7 +669,7 @@ thisword(const char *text, const char *wrd)
 			*text == '\r') {
 		while (*text != 0 && (*text == ' ' || *text == '\t'))
 			text++;
-		return (char *)text;
+		return text;
 	}
 	return NULL;
 }
@@ -854,7 +866,7 @@ afmalloc(struct afmtab *a, int n)
 	a->nametab = malloc((n+NCHARLIB+1)*sizeof *a->nametab);
 	a->nametab[0] = 0;
 	a->nchars = 1;
-	addcharlib(a, a->base[0]=='S' && a->base[1]==0 || a->spec&SPEC_S);
+	addcharlib(a, (a->base[0]=='S' && a->base[1]==0) || a->spec&SPEC_S);
 	a->nameprime = nextprime(n+NCHARLIB+1);
 	a->namecache = calloc(a->nameprime, sizeof *a->namecache);
 	for (i = 0; i < a->nameprime; i++) {
@@ -881,8 +893,7 @@ afmget(struct afmtab *a, char *contents, size_t size)
 		cp = a->file;
 	else
 		cp++;
-	a->base = malloc(strlen(cp) + 1);
-	strcpy(a->base, cp);
+	a->base = strdup(cp);
 	if ((cp = strrchr(a->base, '.')) != NULL)
 		*cp = '\0';
 	if (dev.allpunct)
@@ -978,8 +989,8 @@ afmget(struct afmtab *a, char *contents, size_t size)
  * troff and dpost need it in combination with AFM support.
  */
 void
-makefont(int nf, char *devfontab, char *devkerntab, char *devcodetab,
-		char *devfitab, int nw)
+makefont(int nf, const char *devfontab, const char *devkerntab,
+    const char *devcodetab, const char *devfitab, int nw)
 {
 	int	i;
 
@@ -1043,7 +1054,7 @@ addkernpair(struct afmtab *a, char *_line)
 		lp += 2;
 		if (*lp == 'X')
 			lp++;
-		while (*lp && *lp == ' ' || *lp == '\t')
+		while ((*lp && *lp == ' ') || *lp == '\t')
 			lp++;
 		cp = lp;
 		while (*lp && *lp != '\n' && *lp != '\r' &&
@@ -1054,7 +1065,7 @@ addkernpair(struct afmtab *a, char *_line)
 		*lp = 0;
 		np1 = afmnamelook(a, cp);
 		*lp = c;
-		while (*lp && *lp == ' ' || *lp == '\t')
+		while ((*lp && *lp == ' ') || *lp == '\t')
 			lp++;
 		cp = lp;
 		while (*lp && *lp != '\n' && *lp != '\r' &&
@@ -1117,9 +1128,9 @@ afmgetkern(struct afmtab *a, int ch1, int ch2)
 		do {
 			if (kp->sorted == 0)
 				sortkernpairs(kp);
-			if (ch2 >= kp->ch2[0] && ch2 <= kp->ch2[kp->cnt-1]) {
+			r = kp->cnt - 1;
+			if (ch2 >= kp->ch2[0] && r >= 0 && ch2 <= kp->ch2[r]) {
 				l = 0;
-				r = kp->cnt-1;
 				do {
 					m = (l+r) / 2;
 					if (ch2 < kp->ch2[m])
@@ -1168,8 +1179,8 @@ unhex(int c)
 static int
 xdigit(int c)
 {
-	return c >= 'A' && c <= 'F' || c >= 'a' && c <= 'f' ||
-		c >= '0' && c <= '9';
+	return (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f') ||
+		(c >= '0' && c <= '9');
 }
 
 char *

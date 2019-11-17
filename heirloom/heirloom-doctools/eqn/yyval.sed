@@ -7,7 +7,7 @@
 1,2 {
 	/Bison/ {
 	:look
-		/YYSTYPE/ {
+		/^#ifdef YYTYPE_UINT8$/ {
 			i\
 			YYSTYPE yyval;
 		:repl

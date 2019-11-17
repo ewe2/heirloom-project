@@ -39,6 +39,7 @@ static const char sccsid[] USED = "@(#)/usr/ucb/checknr.sl	1.3 (gritter) 11/6/05
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
+#include "global.h"
 
 static	int	maxstk;	/* Stack size */
 #define	MAXBR	100	/* Max number of bracket pairs known */
@@ -64,53 +65,53 @@ static struct brstr {
 } br[MAXBR] = {
 	/* A few bare bones troff commands */
 #define	SZ	0
-	"sz",	"sz",	/* also \s */
+	{ "sz",	"sz" },	/* also \s */
 #define	FT	1
-	"ft",	"ft",	/* also \f */
+	{ "ft",	"ft" },	/* also \f */
 	/* the -mm package */
-	"AL",	"LE",
-	"AS",	"AE",
-	"BL",	"LE",
-	"BS",	"BE",
-	"DF",	"DE",
-	"DL",	"LE",
-	"DS",	"DE",
-	"FS",	"FE",
-	"ML",	"LE",
-	"NS",	"NE",
-	"RL",	"LE",
-	"VL",	"LE",
+	{ "AL",	"LE" },
+	{ "AS",	"AE" },
+	{ "BL",	"LE" },
+	{ "BS",	"BE" },
+	{ "DF",	"DE" },
+	{ "DL",	"LE" },
+	{ "DS",	"DE" },
+	{ "FS",	"FE" },
+	{ "ML",	"LE" },
+	{ "NS",	"NE" },
+	{ "RL",	"LE" },
+	{ "VL",	"LE" },
 	/* the -ms package */
-	"AB",	"AE",
-	"BD",	"DE",
-	"CD",	"DE",
-	"DS",	"DE",
-	"FS",	"FE",
-	"ID",	"DE",
-	"KF",	"KE",
-	"KS",	"KE",
-	"LD",	"DE",
-	"LG",	"NL",
-	"QS",	"QE",
-	"RS",	"RE",
-	"SM",	"NL",
-	"XA",	"XE",
-	"XS",	"XE",
+	{ "AB",	"AE" },
+	{ "BD",	"DE" },
+	{ "CD",	"DE" },
+	{ "DS",	"DE" },
+	{ "FS",	"FE" },
+	{ "ID",	"DE" },
+	{ "KF",	"KE" },
+	{ "KS",	"KE" },
+	{ "LD",	"DE" },
+	{ "LG",	"NL" },
+	{ "QS",	"QE" },
+	{ "RS",	"RE" },
+	{ "SM",	"NL" },
+	{ "XA",	"XE" },
+	{ "XS",	"XE" },
 	/* The -me package */
-	"(b",	")b",
-	"(c",	")c",
-	"(d",	")d",
-	"(f",	")f",
-	"(l",	")l",
-	"(q",	")q",
-	"(x",	")x",
-	"(z",	")z",
+	{ "(b",	")b" },
+	{ "(c",	")c" },
+	{ "(d",	")d" },
+	{ "(f",	")f" },
+	{ "(l",	")l" },
+	{ "(q",	")q" },
+	{ "(x",	")x" },
+	{ "(z",	")z" },
 	/* Things needed by preprocessors */
-	"EQ",	"EN",
-	"TS",	"TE",
+	{ "EQ",	"EN" },
+	{ "TS",	"TE" },
 	/* Refer */
-	"[",	"]",
-	0,	0
+	{ "[",	"]" },
+	{ NULL,	NULL }
 };
 
 /*
@@ -178,7 +179,6 @@ static void checkknown(char *mac);
 static void addcmd(char *line);
 static void addmac(char *mac);
 static int binsrch(char *mac);
-static char *fgetline(char **line, size_t *linesize, size_t *llen, FILE *fp);
 
 static void
 growstk(void)
@@ -211,6 +211,7 @@ main(int argc, char **argv)
 				;
 			cp = &argv[1][3];
 			while (*cp) {
+				size_t s;
 				if (i >= MAXBR - 3) {
 					printf("Only %d known pairs allowed\n",
 							MAXBR/2);
@@ -220,15 +221,17 @@ main(int argc, char **argv)
 				if (*cq != '.')
 					usage();
 				*cq = 0;
-				br[i].opbr = malloc(cq - cp + 1);
-				strcpy(br[i].opbr, cp);
+				s = cq - cp + 1;
+				br[i].opbr = malloc(s);
+				n_strcpy(br[i].opbr, cp, s);
 				*cq = '.';
 				cp = &cq[1];
 				for (cq = cp; *cq && *cq != '.'; cq++);
 				c = *cq;
 				*cq = 0;
-				br[i].clbr = malloc(cq - cp + 1);
-				strcpy(br[i].clbr, cp);
+				s = cq - cp + 1;
+				br[i].clbr = malloc(s);
+				n_strcpy(br[i].clbr, cp, s);
 				*cq = c;
 				cp = c ? &cq[1] : cq;
 				/* knows pairs are also known cmds */
@@ -303,13 +306,13 @@ process(FILE *f)
 	int pl;
 
 	stktop = -1;
-	for (lineno = 1; fgetline(&line, &linesize, NULL, f); lineno++) {
+	for (lineno = 1; getline(&line, &linesize, f) > 0; lineno++) {
 		if (line[0] == '.') {
 			/*
 			 * find and isolate the macro/command name.
 			 */
 			strncpy(mac, line+1, sizeof mac-1)[sizeof mac-1] = 0;
-			if (isspace(mac[0])&0377) {
+			if (isspace(mac[0]&0377)) {
 				pe(lineno);
 				printf("Empty command\n");
 			} else {
@@ -424,7 +427,7 @@ prop(int i)
 
 /* ARGSUSED */
 static void
-chkcmd(char *line, char *mac)
+chkcmd(char *line __unused, char *mac)
 {
 	int i;
 
@@ -570,6 +573,7 @@ static void
 addmac(char *mac)
 {
 	char **src, **dest, **loc;
+	size_t s;
 
 	if (binsrch(mac) >= 0) {	/* it's OK to redefine something */
 #ifdef DEBUG
@@ -590,8 +594,9 @@ printf("binsrch(%s) -> %d\n", mac, slot);
 	dest = src+1;
 	while (dest > loc)
 		*dest-- = *src--;
-	*loc = malloc(strlen(mac) + 1);
-	strcpy(*loc, mac);
+	s = strlen(mac) + 1;
+	*loc = malloc(s);
+	n_strcpy(*loc, mac, s);
 	ncmds++;
 #ifdef DEBUG
 	printf("after: %s %s %s %s %s, %d cmds\n",
@@ -629,35 +634,4 @@ binsrch(char *mac)
 	}
 	slot = bot;	/* place it would have gone */
 	return (-1);
-}
-
-#define	LSIZE	256
-
-static char *
-fgetline(char **line, size_t *linesize, size_t *llen, FILE *fp)
-{
-	int c;
-	size_t n = 0;
-
-	if (*line == NULL || *linesize < LSIZE + n + 1)
-		*line = realloc(*line, *linesize = LSIZE + n + 1);
-	for (;;) {
-		if (n >= *linesize - LSIZE / 2)
-			*line = realloc(*line, *linesize += LSIZE);
-		c = getc(fp);
-		if (c != EOF) {
-			(*line)[n++] = c;
-			(*line)[n] = '\0';
-			if (c == '\n')
-				break;
-		} else {
-			if (n > 0)
-				break;
-			else
-				return NULL;
-		}
-	}
-	if (llen)
-		*llen = n;
-	return *line;
 }

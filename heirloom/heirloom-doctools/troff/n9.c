@@ -46,6 +46,7 @@
  * contributors.
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -125,7 +126,7 @@ setline(void)
 	delim = c;
 	vflag = 0;
 	dfact = EM;
-	length = quant(atoi(), HOR);
+	length = quant(hatoi(), HOR);
 	dfact = 1;
 	if (!length) {
 		eat(delim);
@@ -149,7 +150,7 @@ s0:
 		*i++ = makem(-(w - length - temp));
 		goto s1;
 	}
-	if (rem = length % w) {
+	if ((rem = length % w)) {
 		if (connectchar(c))
 			*i++ = c | ZBIT;
 		*i++ = makem(rem);
@@ -277,7 +278,7 @@ void
 setvline(void)
 {
 	register int i;
-	tchar c, d, delim, rem, ver, neg;
+	tchar c, _d, delim, rem, ver, neg;
 	int	cnt, v;
 	tchar vlbuf[NC];
 	register tchar *vlp;
@@ -287,7 +288,7 @@ setvline(void)
 	delim = c;
 	dfact = lss;
 	vflag++;
-	i = quant(atoi(), VERT);
+	i = quant(hatoi(), VERT);
 	dfact = 1;
 	if (!i) {
 		eat(delim);
@@ -297,8 +298,8 @@ setvline(void)
 	if (c = getch(), issame(c, delim)) {
 		c = BOXRULE | chbits;	/*default box rule*/
 	} else {
-		d = getch();
-		if (!issame(d, delim))
+		_d = getch();
+		if (!issame(_d, delim))
 			nodelim(delim);
 	}
 	c |= ZBIT;
@@ -346,6 +347,9 @@ setdraw (void)	/* generate internal cookies for a drawing function */
 	int	hpos, vpos;
 	int j, k;
 	tchar drawbuf[NC];
+#else
+	extern int tlp, utf8;
+	char drawbuf[NC];
 #endif	/* NROFF */
 
 	/* input is \D'f dx dy dx dy ... c' (or at least it had better be) */
@@ -367,26 +371,32 @@ setdraw (void)	/* generate internal cookies for a drawing function */
 	delim = c;
 	type = cbits(getch());
 	for (i = 0; i < NPAIR ; i++) {
-		c = getch();
-		if (issame(c, delim))
-			break;
+		do {
+			c = getch();
+			if (issame(c, delim)) goto argend;
+		} while (cbits(c) == ' ');
 	/* ought to pick up optional drawing character */
 		if (cbits(c) != ' ')
 			ch = c;
 		vflag = 0;
 		dfact = type == DRAWTHICKNESS ? 1 : EM;
-		dx[i] = quant(atoi(), HOR);
+		dx[i] = quant(hatoi(), HOR);
 		if (dx[i] > MAXMOT)
 			dx[i] = MAXMOT;
 		else if (dx[i] < -MAXMOT)
 			dx[i] = -MAXMOT;
-		if (c = getch(), issame(c, delim)) {	/* spacer */
-			dy[i++] = 0;
-			break;
-		}
+		do {
+			c = getch();
+			if (issame(c, delim)) {
+				dy[i++] = 0;
+				goto argend;
+			}
+		} while (cbits(c) == ' ');
+		if (cbits(c) != ' ')
+			ch = c;
 		vflag = 1;
 		dfact = lss;
-		dy[i] = quant(atoi(), VERT);
+		dy[i] = quant(hatoi(), VERT);
 		if (type == DRAWTHICKNESS)
 			dy[i] = 0;
 		else if (dy[i] > MAXMOT)
@@ -394,6 +404,7 @@ setdraw (void)	/* generate internal cookies for a drawing function */
 		else if (dy[i] < -MAXMOT)
 			dy[i] = -MAXMOT;
 	}
+argend:
 	dfact = 1;
 	vflag = 0;
 #ifndef NROFF
@@ -423,6 +434,24 @@ setdraw (void)	/* generate internal cookies for a drawing function */
 	drawbuf[j++] = DRAWFCN | chbits | ZBIT;	/* marks end for ptout */
 	drawbuf[j] = 0;
 	pushback(drawbuf);
+#else
+	switch (type) {
+	case 'l':
+		if (dx[0] && !dy[0]) {
+			if (dx[0] < 0) {
+				snprintf(drawbuf, sizeof(drawbuf), "\\h'%du'",
+				    dx[0]);
+				cpushback(drawbuf);
+			}
+			snprintf(drawbuf, sizeof(drawbuf), "\\l'%du%s'",
+			    dx[0], tlp ? "\\&-" : utf8 ? "\\U'2500'" : "");
+			cpushback(drawbuf);
+		} else if (dy[0] && !dx[0]) {
+			snprintf(drawbuf, sizeof(drawbuf), "\\L'%du%s'",
+			    dy[0], tlp ? "|" : utf8 ? "\\U'2502'" : "");
+			cpushback(drawbuf);
+		}
+	}
 #endif
 }
 
@@ -451,7 +480,8 @@ setfield(int x)
 {
 	register tchar ii, jj, *fp;
 	register int i, j, k;
-	int length, ws, npad, temp, type;
+	int length, ws, npad, temp;
+	unsigned int type;
 	tchar **pp, *padptr[NPP];
 	tchar fbuf[FBUFSZ];
 	int savfc, savtc, savlc;
@@ -459,6 +489,7 @@ setfield(int x)
 	int savepos;
 	int oev;
 
+	prdblesc = 1;
 	if (x == tabch) 
 		rchar = tabc | chbits;
 	else if (x ==  ldrch) 
@@ -647,6 +678,7 @@ rtn:
 	numtab[HP].val = savepos;
 	if (pbp < pbsize-3 || growpbbuf())
 		pbbuf[pbp++] = mkxfunc(FLDMARK, x);
+	prdblesc = 0;
 	return(jj | ADJBIT);
 }
 
@@ -654,11 +686,11 @@ rtn:
 static int
 readpenalty(int *valp)
 {
-	int	n, t;
+	int	n, _t;
 
-	t = dpenal ? dpenal - INFPENALTY0 - 1 : 0;
+	_t = dpenal ? dpenal - INFPENALTY0 - 1 : 0;
 	noscale++;
-	n = inumb(&t);
+	n = inumb(&_t);
 	noscale--;
 	if (nonumb)
 		return 0;
@@ -710,10 +742,10 @@ setdpenal(void)
 tchar
 mkxfunc(int f, int s)
 {
-	tchar	t = XFUNC;
-	setfbits(t, f);
-	setsbits(t, s);
-	return t;
+	tchar	_t = XFUNC;
+	setfbits(_t, f);
+	setsbits(_t, s);
+	return _t;
 }
 
 void
@@ -774,11 +806,12 @@ popinlev(void)
 
 #ifdef EUC
 /* locale specific initialization */
+wchar_t	*wddelim(wchar_t, wchar_t, int);
+int	wdbindf(wchar_t, wchar_t, int);
+
 void
 localize(void)
 {
-	extern int	wdbindf(wchar_t, wchar_t, int);
-	extern wchar_t	*wddelim(wchar_t, wchar_t, int);
 	char	*codeset;
 
 	codeset = nl_langinfo(CODESET);
@@ -808,13 +841,13 @@ localize(void)
 
 #ifndef	__sun
 int
-wdbindf(wchar_t wc1, wchar_t wc2, int type)
+wdbindf(wchar_t wc1 __unused, wchar_t wc2 __unused, int type __unused)
 {
 	return 6;
 }
 
 wchar_t *
-wddelim(wchar_t wc1, wchar_t wc2, int type)
+wddelim(wchar_t wc1 __unused, wchar_t wc2 __unused, int type __unused)
 {
 	return L" ";
 }
@@ -1003,11 +1036,11 @@ getpsbb(const char *name, double bb[4])
 				continue;
 			}
 		}
-		if (n == 0 || state == 0 &&
+		if (n == 0 || (state == 0 &&
 				(getcom(buf, "%%EndComments") != NULL ||
 				 buf[0] != '%' || buf[1] == ' ' ||
 				 buf[1] == '\t' || buf[1] == '\r' ||
-				 buf[1] == '\n')) {
+				 buf[1] == '\n'))) {
 		eof:	if (found == 0 && (atend == 0 || n == 0))
 				errprint("%s lacks a %%%%BoundingBox: DSC "
 					"comment", name);
@@ -1124,7 +1157,8 @@ static int
 warn1(void)
 {
 	char	name[NC];
-	int	i, n, sign;
+	int	n, sign;
+	size_t	i;
 	tchar	c;
 
 	switch (cbits(c = getch())) {
@@ -1219,7 +1253,7 @@ illseq(int wc, const char *mb, int n)
 	if ((warn & WARN_INPUT) == 0)
 		return;
 	if (n == -3)
-		errprint("non-ASCII input byte terminates name");
+		errprint("non-ASCII input byte 0x%x terminates name", wc);
 	else if (n == 0) {
 		if (wc & ~0177)
 			errprint("ignoring '%U' in input", wc);

@@ -18,11 +18,6 @@
 #include "grap.h"
 #include "y.tab.h"
 
-#if defined (__GLIBC__) && defined (_IO_getc_unlocked)
-#undef	getc
-#define	getc(f)	_IO_getc_unlocked(f)
-#endif
-
 Infile	infile[10];
 Infile	*curfile = infile;
 
@@ -37,7 +32,7 @@ void pushsrc(int type, char *ptr)	/* new input source */
 	srcp->type = type;
 	srcp->sp = ptr;
 	if (dbg) {
-		printf("\n%3d ", srcp - src);
+		printf("\n%3d ", (int)(srcp - src));
 		switch (srcp->type) {
 		case File:
 			printf("push file %s\n", ((Infile *)ptr)->fname);
@@ -68,7 +63,7 @@ void popsrc(void)	/* restore an old one */
 	if (srcp <= src)
 		FATAL("too many inputs popped");
 	if (dbg) {
-		printf("%3d ", srcp - src);
+		printf("%3d ", (int)(srcp - src));
 		switch (srcp->type) {
 		case File:
 			printf("pop file\n");
@@ -187,7 +182,7 @@ void dodef(Obj *stp)	/* collect args and switch input to defn */
 		ap->argstk[i] = "";
 	if (dbg)
 		for (i = 0; i < argcnt; i++)
-			printf("arg %d.%d = <%s>\n", ap-args, i+1, ap->argstk[i]);
+			printf("arg %d.%d = <%s>\n", (int)(ap-args), i+1, ap->argstk[i]);
 	argfp = ap;
 	pushsrc(Macro, stp->val);
 }
@@ -288,9 +283,9 @@ int nextchar(void)
 				FATAL("argfp underflow");
 			popsrc();
 			goto loop;
-		} else if (c == '$' && isdigit(*srcp->sp)) {	/* $3 */
+		} else if (c == '$' && isdigit((int)*srcp->sp)) {	/* $3 */
 			int n = 0;
-			while (isdigit(*srcp->sp))
+			while (isdigit((int)*srcp->sp))
 				n = 10 * n + *srcp->sp++ - '0';
 			if (n > 0 && n <= MAXARGS)
 				pushsrc(String, argfp->argstk[n-1]);
@@ -381,7 +376,7 @@ void do_thru(void)	/* read one line, make into a macro expansion */
 		ap->argstk[i] = "";
 	if (dbg)
 		for (i = 0; i < argcnt; i++)
-			printf("arg %d.%d = <%s>\n", ap-args, i+1, ap->argstk[i]);
+			printf("arg %d.%d = <%s>\n", (int)(ap-args), i+1, ap->argstk[i]);
 	if (strcmp(ap->argstk[0], ".G2") == 0) {
 		thru = 0;
 		thrudef = 0;
@@ -466,11 +461,11 @@ void eprint(void)	/* try to print context around error */
 	for (q=ep-1; q>=p && *q!=' ' && *q!='\t' && *q!='\n'; q--)
 		;
 	for (; p < q; p++)
-		if (isprint(*p))
+		if (isprint((int)*p))
 			putc(*p, stderr);
 	fprintf(stderr, " >>> ");
 	for (; p < q; p++)
-		if (isprint(*p))
+		if (isprint((int)*p))
 			putc(*p, stderr);
 	fprintf(stderr, " <<< ");
 	while (pb >= pbuf)
@@ -595,34 +590,4 @@ void shell_exec(void)	/* do it */
 		WARNING("-S inhibited execution of shell command");
 	else
 		system(shellbuf);
-}
-
-#define	LSIZE	128
-
-char *fgetline(char **line, size_t *linesize, size_t *llen, FILE *fp)
-{
-	int c;
-	size_t n = 0;
-
-	if (*line == NULL || *linesize < LSIZE + n + 1)
-		*line = realloc(*line, *linesize = LSIZE + n + 1);
-	for (;;) {
-		if (n >= *linesize - LSIZE / 2)
-			*line = realloc(*line, *linesize += LSIZE);
-		c = getc(fp);
-		if (c != EOF) {
-			(*line)[n++] = c;
-			(*line)[n] = '\0';
-			if (c == '\n')
-				break;
-		} else {
-			if (n > 0)
-				break;
-			else
-				return NULL;
-		}
-	}
-	if (llen)
-		*llen = n;
-	return *line;
 }

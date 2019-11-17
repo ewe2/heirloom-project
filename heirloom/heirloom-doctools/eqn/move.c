@@ -21,8 +21,14 @@
  * Sccsid @(#)move.c	1.4 (gritter) 10/29/05
  */
 
-# include "e.h"
-# include "e.def"
+/*
+ * Changes Copyright (c) 2014 Carsten Kunze (carsten.kunze at arcor.de)
+ */
+
+#include "e.h"
+#include "y.tab.h"
+
+extern YYSTYPE yyval;
 
 void
 move(int dir, int amt, int p) {
@@ -32,13 +38,13 @@ move(int dir, int amt, int p) {
 	int a;
 #endif	/* NEQN */
 
-	yyval = p;
+	yyval.token = p;
 #ifndef NEQN
 	a = VERT(EM(amt/100.0, EFFPS(ps)));
 #else /* NEQN */
 	a = VERT( (amt+49)/50 );	/* nearest number of half-lines */
 #endif /* NEQN */
-	printf(".ds %d ", yyval);
+	printf(".ds %d ", yyval.token);
 	if( dir == FWD || dir == BACK )	/* fwd, back */
 #ifndef	NEQN
 		printf("\\h'%s%gp'\\*(%d\n", (dir==BACK) ? "-" : "", a, p);
@@ -55,10 +61,10 @@ move(int dir, int amt, int p) {
 #ifndef	NEQN
 		printf("\\v'%gp'\\*(%d\\v'-%gp'\n", a, p, a);
 	if(dbg)printf(".\tmove %d dir %d amt %g; h=%g b=%g\n", 
-		p, dir, a, eht[yyval], ebase[yyval]);
+		p, dir, a, eht[yyval.token], ebase[yyval.token]);
 #else	/* NEQN */
 		printf("\\v'%du'\\*(%d\\v'-%du'\n", a, p, a);
 	if(dbg)printf(".\tmove %d dir %d amt %d; h=%d b=%d\n", 
-		p, dir, a, eht[yyval], ebase[yyval]);
+		p, dir, a, eht[yyval.token], ebase[yyval.token]);
 #endif	/* NEQN */
 }

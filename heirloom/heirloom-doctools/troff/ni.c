@@ -62,6 +62,7 @@ char	devname[20] = "37";
 char	*termtab = FNTDIR;              /* rest added in ptinit() */
 char	*fontfile = FNTDIR;             /* rest added in casefp() */
 char	devname[20]	 = "ps";	/* default typesetter */
+int	html;
 
 #endif
 char	obuf[OBUFSZ];	/* characters collected here for typesetter output */
@@ -69,22 +70,22 @@ char	*obufp = obuf;
 int	NN;
 struct numtab *numtab;
 const struct numtab initnumtab[] = {
-	{ PAIR('%', 0) },
-	{ PAIR('n', 'l') },
-	{ PAIR('y', 'r') },
-	{ PAIR('h', 'p') },
-	{ PAIR('c', 't') },
-	{ PAIR('d', 'n') },
-	{ PAIR('m', 'o') },
-	{ PAIR('d', 'y') },
-	{ PAIR('d', 'w') },
-	{ PAIR('l', 'n') },
-	{ PAIR('d', 'l') },
-	{ PAIR('s', 't') },
-	{ PAIR('s', 'b') },
-	{ PAIR('c', '.') },
-	{ PAIR('$', '$') },
-	{ 0 }
+	{ PAIR('%', 0), 0, 0, 0, NULL, 0, 0, 0, 0, 0 },
+	{ PAIR('n', 'l'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('y', 'r'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('h', 'p'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('c', 't'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('d', 'n'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('m', 'o'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('d', 'y'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('d', 'w'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('l', 'n'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('d', 'l'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('s', 't'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('s', 'b'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('c', '.'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ PAIR('$', '$'), 0, 0, 0, NULL, 0, 0, 0, 0, 0  },
+	{ 0, 0, 0, 0, NULL, 0, 0, 0, 0, 0  }
 };
 
 
@@ -97,7 +98,7 @@ char	**mfiles;
 int	nmfi = 0;
 int	NMF;
 #ifndef NROFF
-int	oldbits = -1;
+unsigned int	oldbits = (unsigned int)-1;
 #endif
 int	init = 1;
 int	fc = IMP;	/* field character */
@@ -137,7 +138,7 @@ enum warn	warn = WARN_FONT;
 
 int	NM;
 struct contab *contab;
-#define	C(a,b)	{a, 0, (void(*)(int))b, 0}
+#define	C(a,b)	{a, 0, (void(*)(int))b, 0, 0, 0, 0}
 const struct contab initcontab[] = {
 	C(PAIR('d', 's'), caseds),
 	C(PAIR('a', 's'), caseas),
@@ -264,6 +265,37 @@ struct	env env = {
 /* int	lshlow	 */	0,
 /* int	lshhigh	 */	0,
 /* int	lshcur	 */	0,
+/* double _adjlapenalty     */	0.0,
+/* double _adjlathreshold   */	1.0,
+/* double _adjpenalty       */	0.0,
+/* double _adjthreshold     */	0.5,
+/* double _adjthreshupr     */	0.0,
+/* double _elppen           */	0.0,
+/* double _exhyp            */	0.0,
+/* int    _lastlinestretch  */	0,
+/* int    _letcalc          */	0,
+/* double _letlimlwr        */	1.0,
+/* double _letlimupr        */	1.0,
+/* int    _letpen           */	0,
+/* double _letpenlwr        */	0.01,
+/* double _letpenupr        */	0.01,
+/* double _letstren         */	1.0,
+/* double _letthreshlwr     */	1.0,
+/* double _letthreshupr     */	1.0,
+/* double _linepenalty      */	0.0,
+/* int    _looseness        */	0,
+/* int    _overrunmin       */	0,
+/* double _overrunpenalty   */	0.0,
+/* double _overrunthreshold */	0.25,
+/* int    _rhanglevel       */	0,
+/* int    _wscalc           */	0,
+/* double _wslwr            */	0.0,
+/* int    _wsmark           */	0,
+/* double _wsmin            */	0.0,
+/* double _wsupr            */	1.6,
+/* int    _wswarn           */	0,
+/* double _wswarnlwr        */	0.667,
+/* double _wswarnupr        */	1.50,
 #endif	/* !NROFF */
 /* int	fldcnt	 */	0,
 /* int	lss	 */	0,
@@ -301,6 +333,7 @@ struct	env env = {
 /* float hypp	 */	0,
 /* float hypp2	 */	0,
 /* float hypp3	 */	0,
+/* float hypp4	 */	0,
 /* int	un1	 */	-1,
 /* int	tabc	 */	0,
 /* int	dotc	 */	'.',

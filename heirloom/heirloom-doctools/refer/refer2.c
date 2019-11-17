@@ -45,10 +45,10 @@ doref(char *line1)
    again:
 	buff[0] = dbuff[0] = 0;
 	if (biblio && Iline == 1 && line1[0] == '%')
-		strcat(dbuff, line1);
-	while (input(line)) {		/* get query */
+		n_strcat(dbuff, line1, sizeof(dbuff));
+	while (input(line, sizeof(line))) {		/* get query */
 		Iline++;
-		if (prefix(".]", line))
+		if (prefix(line, ".]"))
 			break;
 		if (biblio && line[0] == '\n')
 			break;
@@ -56,7 +56,8 @@ doref(char *line1)
 			break;
 		if (control(line[0]))
 			query = 1;
-		strcat(query ? dbuff : buff, line);
+		n_strcat(query ? dbuff : buff, line, query ?
+		    sizeof(dbuff) : sizeof(buff));
 		if (strlen(buff) > QLEN)
 			err("query too long (%d)", strlen(buff));
 		if (strlen(dbuff) > 3 * QLEN)
@@ -71,15 +72,15 @@ doref(char *line1)
 	}
 	answer[0] = 0;
 	for (p = buff; *p; p++) {
-		if (isupper(*p))
+		if (isupper((int)*p))
 			*p |= 040;
 	}
 	alph = digs = 0;
 	for (p = buff; *p; p++) {
-		if (isalpha(*p))
+		if (isalpha((int)*p))
 			alph++;
 		else
-			if (isdigit(*p))
+			if (isdigit((int)*p))
 				digs++;
 			else {
 				*p = 0;
@@ -107,7 +108,7 @@ doref(char *line1)
 			assert(strlen(temp) < TLEN);
 			if (strlen(temp)+strlen(answer) > BUFSIZ)
 				err("Accumulated answers too large",0);
-			strcat(answer, temp);
+			n_strcat(answer, temp, sizeof(answer));
 			if (strlen(answer)>BUFSIZ)
 				err("answer too long (%d)", strlen(answer));
 			if (newline(answer) > 0)
@@ -130,7 +131,7 @@ doref(char *line1)
 			*++p = 0;
 		case 1:
 			if (endpush)
-				if (nr = chkdup(answer)) {
+				if ((nr = chkdup(answer))) {
 					if (bare < 2) {
 						nf = tabs(flds, one);
 						nf += tabs(flds+nf, dbuff);
@@ -167,7 +168,7 @@ newline(const char *s)
 {
 	int k = 0, c;
 
-	while (c = *s++)
+	while ((c = *s++))
 		if (c == '\n')
 		k++;
 	return(k);

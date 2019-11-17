@@ -2,17 +2,17 @@ OBJ = arcgen.o blockgen.o boxgen.o circgen.o for.o input.o linegen.o \
 	main.o misc.o movegen.o picl.o picy.o pltroff.o print.o symtab.o \
 	textgen.o version.o
 
-FLAGS =
+FLAGS = $(DEFINES) -I../include
 
 YFLAGS = -d
 
 .c.o:
-	$(CC) $(CFLAGS) $(WARN) $(FLAGS) $(CPPFLAGS) -c $<
+	$(CC) $(_CFLAGS) $(FLAGS) -c $<
 
 all: picy.c picl.c pic
 
 pic: $(OBJ)
-	$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -lm -o pic
+	$(CC) $(_CFLAGS) $(_LDFLAGS) $(OBJ) $(LIBS) -lm -o pic
 
 y.tab.h: picy.c
 
@@ -42,3 +42,4 @@ pltroff.o: pltroff.c pic.h
 print.o: print.c pic.h y.tab.h
 symtab.o: symtab.c pic.h y.tab.h
 textgen.o: textgen.c pic.h y.tab.h
+picl.o: y.tab.h
